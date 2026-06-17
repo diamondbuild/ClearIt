@@ -5,17 +5,12 @@ import { getRandomDemoResult } from "@/lib/demo/demoResults";
 import { AnalyzeResponse } from "@/lib/types";
 
 const RequestSchema = z.object({
-  // Single image (legacy)
   imageBase64: z.string().optional(),
   imageMediaType: z.string().optional(),
-  // Multiple images
   images: z.array(z.string()).optional(),
   imageMediaTypes: z.array(z.string()).optional(),
-  // Extracted / pasted text
   text: z.string().optional(),
-  // Additional context from user
   additionalContext: z.string().optional(),
-  // DOCX/DOC file
   docxBase64: z.string().optional(),
   fileType: z.enum(["pdf", "docx", "doc"]).optional(),
   fileName: z.string().optional(),
@@ -28,6 +23,84 @@ async function extractDocxText(base64: string): Promise<string> {
   return result.value;
 }
 
+function classifyAiError(err: unknown): { message: string; status: number; fallbackToDemo: boolean } {
+  const msg = err instanceof Error ? err.message : String(err);
+  const msgLower = msg.toLowerCase();
+
+  // Auth / key issues → tell them exactly what's wrong
+  if (
+    msgLower.includes("401") ||
+    msgLower.includes("authentication") ||
+    msgLower.includes("api key") ||
+    msgLower.includes("incorrect api key") ||
+    msgLower.includes("invalid api key") ||
+    msgLower.includes("apikey")
+  ) {
+    return {
+      message:
+        "The OpenAI API key is missing or invalid. Please add a valid OPENAI_API_KEY in your Vercel environment variables, then redeploy.",
+      status: 401,
+      fallbackToDemo: true,
+    };
+  }
+
+  // Rate limit
+  if (msgLower.includes("429") || msgLower.includes("rate limit")) {
+    return {
+      message: "Too many requests right now. Please wait a moment and try again.",
+      status: 429,
+      fallbackToDemo: false,
+    };
+  }
+
+  // Model not found / access
+  if (msgLower.includes("model") && (msgLower.includes("not found") || msgLower.includes("access"))) {
+    return {
+      message:
+        "The AI model specified is not available on your OpenAI account. Try setting OPENAI_MODEL=gpt-4o in Vercel and redeploying.",
+      status: 400,
+      fallbackToDemo: true,
+    };
+  }
+
+  // JSON parsing of AI response
+  if (msgLower.includes("json") || msgLower.includes("parse")) {
+    return {
+      message: "The AI returned an unexpected response. Please try again.",
+      status: 500,
+      fallbackToDemo: false,
+    };
+  }
+
+  // Image / content issues
+  if (
+    msgLower.includes("image") ||
+    msgLower.includes("vision") ||
+    msgLower.includes("content")
+  ) {
+    return {
+      message:
+        "ClearIt couldn't read this image clearly. Try a sharper photo with better lighting, or paste the text instead.",
+      status: 422,
+      fallbackToDemo: false,
+    };
+  }
+
+  // Timeout / network
+  if (msgLower.includes("timeout") || msgLower.includes("network") || msgLower.includes("fetch")) {
+    return {
+      message: "The request timed out. Please try again.",
+      status: 504,
+      fallbackToDemo: false,
+    };
+  }
+
+  return {
+    message: "We couldn't analyze this clearly. Try a sharper photo or paste the text instead.",
+    status: 500,
+    fallbackToDemo: false,
+  };
+}
 
 export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeResponse>> {
   try {
@@ -72,21 +145,16 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
     if (docxBase64 && (fileType === "docx" || fileType === "doc")) {
       try {
         extractedText = await extractDocxText(docxBase64);
-        fileContext = `[This is a ${fileType?.toUpperCase() ?? "document"} file: ${fileName ?? "uploaded document"}]`;
+        fileContext = `[This is a ${fileType?.toUpperCase()} file: ${fileName ?? "uploaded document"}]`;
       } catch (err) {
         console.error("DOCX extraction error:", err);
         return NextResponse.json(
-          {
-            success: false,
-            error:
-              "Couldn't read this document. Try copying the text and pasting it instead.",
-          },
+          { success: false, error: "Couldn't read this document. Try copying the text and pasting it instead." },
           { status: 422 }
         );
       }
     }
 
-    // Check we have something to analyze
     if (allImages.length === 0 && !extractedText.trim()) {
       return NextResponse.json(
         { success: false, error: "Please provide an image, file, or text to analyze." },
@@ -94,12 +162,11 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
       );
     }
 
-    // Limit text size
     const combinedText = [fileContext, extractedText.slice(0, 12000)]
       .filter(Boolean)
       .join("\n");
 
-    // Demo mode
+    // Demo mode — no key set at all
     if (!process.env.OPENAI_API_KEY) {
       await new Promise((r) => setTimeout(r, 2000));
       return NextResponse.json({ success: true, data: getRandomDemoResult() });
@@ -116,23 +183,21 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
       return NextResponse.json({ success: true, data: result });
     } catch (aiError) {
       console.error("AI analysis error:", aiError);
-      const message = aiError instanceof Error ? aiError.message : "Unknown error";
+      const { message, status, fallbackToDemo } = classifyAiError(aiError);
 
-      if (message.includes("JSON")) {
-        return NextResponse.json(
-          { success: false, error: "ClearIt couldn't parse the response. Please try again." },
-          { status: 500 }
-        );
+      // For auth/model errors in production, fall back to demo so the UI still works
+      if (fallbackToDemo) {
+        console.warn("Falling back to demo mode due to AI error:", message);
+        const demo = getRandomDemoResult();
+        // Attach a notice to the demo result
+        demo.warnings = [
+          `⚠️ Demo mode: ${message}`,
+          ...demo.warnings,
+        ];
+        return NextResponse.json({ success: true, data: demo });
       }
 
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "We couldn't analyze this clearly. Try a sharper photo or paste the text instead.",
-        },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, error: message }, { status });
     }
   } catch (err) {
     console.error("Route error:", err);

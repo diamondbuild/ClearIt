@@ -1,0 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+
+  --primary: 243 75% 59%;
+  --primary-foreground: 0 0% 100%;
+
+  --accent: 168 76% 42%;
+  --accent-foreground: 0 0% 100%;
+
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 243 75% 59%;
+}
+
+.dark {
+  --background: 222 47% 8%;
+  --foreground: 210 40% 96%;
+
+  --card: 222 40% 12%;
+  --card-foreground: 210 40% 96%;
+
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20% 65%;
+
+  --primary: 243 75% 66%;
+  --primary-foreground: 0 0% 100%;
+
+  --accent: 168 70% 45%;
+  --accent-foreground: 222 47% 11%;
+
+  --border: 217 33% 20%;
+  --input: 217 33% 20%;
+  --ring: 243 75% 66%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Soft app gradient background */
+.app-gradient {
+  background:
+    radial-gradient(
+      1200px 600px at 50% -10%,
+      hsl(243 75% 59% / 0.12),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 500px at 100% 0%,
+      hsl(168 76% 42% / 0.1),
+      transparent 55%
+    ),
+    hsl(var(--background));
+}
+
+.dark .app-gradient {
+  background:
+    radial-gradient(
+      1200px 600px at 50% -10%,
+      hsl(243 75% 66% / 0.18),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 500px at 100% 0%,
+      hsl(168 70% 45% / 0.12),
+      transparent 55%
+    ),
+    hsl(var(--background));
+}
+
+/* Senior mode bumps base font size for readability */
+.senior-mode {
+  font-size: 1.125rem;
+}
+
+/* Hide scrollbar for horizontal chip rows */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Shimmer for loading skeletons */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(0 0% 100% / 0.45),
+    transparent
+  );
+  animation: shimmer 1.6s infinite;
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

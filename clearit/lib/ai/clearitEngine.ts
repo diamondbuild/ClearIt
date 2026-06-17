@@ -16,7 +16,12 @@ function getModel(): string {
 }
 
 export interface EngineInput {
+  images?: string[];
+  imageMediaTypes?: string[];
   text?: string;
+  additionalContext?: string;
+  imageCount?: number;
+  // Legacy single image support
   imageBase64?: string;
   imageMediaType?: string;
 }
@@ -24,15 +29,29 @@ export interface EngineInput {
 export async function analyzeWithClearItEngine(
   input: EngineInput
 ): Promise<ClearItAnalysis> {
-  const hasImage = !!input.imageBase64;
-  const hasText = !!input.text;
+  // Normalize inputs
+  const images: string[] = [];
+  const mediaTypes: string[] = [];
 
-  if (!hasImage && !hasText) {
+  if (input.images && input.images.length > 0) {
+    images.push(...input.images);
+    mediaTypes.push(...(input.imageMediaTypes ?? input.images.map(() => "image/jpeg")));
+  } else if (input.imageBase64) {
+    images.push(input.imageBase64);
+    mediaTypes.push(input.imageMediaType ?? "image/jpeg");
+  }
+
+  const hasImages = images.length > 0;
+  const hasText = !!input.text;
+  const hasContext = !!input.additionalContext;
+
+  if (!hasImages && !hasText) {
     throw new Error("No input provided");
   }
 
   const userMessages: OpenAI.Chat.ChatCompletionContentPart[] = [];
 
+  // Add text content first
   if (hasText) {
     userMessages.push({
       type: "text",
@@ -40,20 +59,38 @@ export async function analyzeWithClearItEngine(
     });
   }
 
-  if (hasImage) {
-    const mediaType = (input.imageMediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp") || "image/jpeg";
+  // Add all images
+  for (let i = 0; i < images.length; i++) {
+    const mediaType = (mediaTypes[i] as "image/jpeg" | "image/png" | "image/gif" | "image/webp") || "image/jpeg";
+
+    if (images.length > 1) {
+      userMessages.push({
+        type: "text",
+        text: `Image ${i + 1} of ${images.length}:`,
+      });
+    }
+
     userMessages.push({
       type: "image_url",
       image_url: {
-        url: `data:${mediaType};base64,${input.imageBase64}`,
+        url: `data:${mediaType};base64,${images[i]}`,
         detail: "high",
       },
     });
   }
 
+  // Add additional context from user
+  if (hasContext) {
+    userMessages.push({
+      type: "text",
+      text: `\nAdditional context from the user: "${input.additionalContext}"`,
+    });
+  }
+
+  // Add the analysis instruction
   userMessages.push({
     type: "text",
-    text: CLEARIT_USER_PROMPT(hasImage, hasText),
+    text: CLEARIT_USER_PROMPT(hasImages, hasText, images.length, hasContext),
   });
 
   const openai = getOpenAIClient();
@@ -95,6 +132,5 @@ export async function analyzeWithClearItEngine(
   };
 
   const validated = ClearItAnalysisSchema.parse(withDefaults);
-
   return applySafetyPlaybook(validated as ClearItAnalysis);
 }

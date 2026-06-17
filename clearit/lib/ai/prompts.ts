@@ -15,19 +15,35 @@ Rules:
 - If there is a deadline, extract it and mention it in next steps.
 - If the user should call someone, say who to call and what to ask.
 - If the content appears urgent or dangerous, tell the user to contact appropriate emergency or professional help.
+- When multiple pages or images are provided, treat them as a single multi-page document and analyze the full picture together.
+- If the user provides additional context, incorporate it into your explanation (e.g., if they mention they already paid, reflect that in the next steps).
 - Keep the result practical.
 
 Watch for scam signals: gift cards, crypto, wire transfers, Zelle/Cash App/Venmo pressure, urgent threats, suspicious links, password reset codes, login codes, bank fraud messages, "Act now", "Account locked", "Prize", "Refund", "Delivery failed", "Unpaid toll", requests for Social Security number, requests for banking info, unknown sender, bad grammar in official-looking notice.
 
 Return ONLY valid JSON matching the exact schema provided. No markdown, no code blocks, just raw JSON.`;
 
-export const CLEARIT_USER_PROMPT = (hasImage: boolean, hasText: boolean) => {
+export const CLEARIT_USER_PROMPT = (
+  hasImage: boolean,
+  hasText: boolean,
+  imageCount: number = 1,
+  hasContext: boolean = false
+) => {
   const parts: string[] = [];
 
-  if (hasImage) parts.push("image provided");
-  if (hasText) parts.push("text provided");
+  if (hasImage) {
+    parts.push(
+      imageCount > 1
+        ? `${imageCount} images (treat as a single multi-page document)`
+        : "image"
+    );
+  }
+  if (hasText) parts.push("extracted text");
+  if (hasContext) parts.push("additional context from user");
 
-  return `Please analyze this ${parts.join(" and ")} and return a complete ClearItAnalysis JSON object.
+  return `Please analyze this ${parts.join(", ")} and return a complete ClearItAnalysis JSON object.
+
+${imageCount > 1 ? `Note: ${imageCount} images have been provided. They represent different pages or sides of the same document. Analyze them together as a whole.` : ""}
 
 The JSON must have ALL of these fields:
 {

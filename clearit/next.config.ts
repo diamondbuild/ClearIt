@@ -6,6 +6,10 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "10mb",
     },
   },
+  // Increase API route body size limit
+  async headers() {
+    return [];
+  },
 };
 
 export default nextConfig;

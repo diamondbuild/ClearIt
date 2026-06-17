@@ -211,10 +211,18 @@ function AnalyzePage() {
         };
       }
 
+      const bodyString = JSON.stringify(body);
+      // Vercel serverless payload limit is ~4.5MB
+      if (bodyString.length > 4 * 1024 * 1024) {
+        throw new Error(
+          "The total file size is too large to send. Try fewer or smaller images, or paste the text instead."
+        );
+      }
+
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: bodyString,
       });
 
       const data = await res.json();

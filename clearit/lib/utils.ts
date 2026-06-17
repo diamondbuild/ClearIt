@@ -74,11 +74,14 @@ export function urgencyShortLabel(urgency: Urgency): string {
   return labels[urgency] ?? urgency;
 }
 
+// Max ~800KB per image as base64 to stay under Vercel's 4.5MB payload limit
+const MAX_BASE64_BYTES = 800 * 1024;
+
 export async function compressImage(
   file: File,
-  maxWidth = 1600,
-  maxHeight = 1600,
-  quality = 0.85
+  maxWidth = 1280,
+  maxHeight = 1280,
+  quality = 0.75
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -97,7 +100,14 @@ export async function compressImage(
       const ctx = canvas.getContext("2d");
       if (!ctx) return reject(new Error("Canvas not supported"));
       ctx.drawImage(img, 0, 0, width, height);
-      const base64 = canvas.toDataURL("image/jpeg", quality).split(",")[1];
+
+      // Try quality levels until we get under the size limit
+      let q = quality;
+      let base64 = canvas.toDataURL("image/jpeg", q).split(",")[1];
+      while (base64.length > MAX_BASE64_BYTES && q > 0.3) {
+        q -= 0.1;
+        base64 = canvas.toDataURL("image/jpeg", q).split(",")[1];
+      }
       resolve(base64);
     };
     img.onerror = reject;

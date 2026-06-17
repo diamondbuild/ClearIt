@@ -63,8 +63,15 @@ function classifyAiError(err: unknown): { message: string; status: number; fallb
     };
   }
 
-  // JSON parsing of AI response
-  if (msgLower.includes("json") || msgLower.includes("parse")) {
+  // JSON / Zod parsing of AI response
+  if (
+    msgLower.includes("json") ||
+    msgLower.includes("parse") ||
+    msgLower.includes("zod") ||
+    msgLower.includes("validation") ||
+    msg.startsWith("JSON_PARSE_FAILED") ||
+    msg.startsWith("ZOD_VALIDATION_FAILED")
+  ) {
     return {
       message: "The AI returned an unexpected response. Please try again.",
       status: 500,

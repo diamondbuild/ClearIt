@@ -1,79 +1,83 @@
 import { z } from "zod";
 
-export const CategorySchema = z.enum([
-  "bill",
-  "insurance",
-  "medical",
-  "bank_alert",
-  "possible_scam",
-  "school_form",
-  "work_hr",
-  "legal_notice",
-  "government",
-  "subscription",
-  "app_error",
-  "device_error",
-  "appliance",
-  "parking_ticket",
-  "shipping_delivery",
-  "tax",
-  "mortgage_rent",
-  "utility",
-  "general_message",
-  "unknown",
-]);
+// Coerce null/undefined to empty string for any string field
+const safeStr = z.string().nullable().optional().transform((v) => v ?? "");
 
-export const UrgencySchema = z.enum([
-  "low",
-  "medium",
-  "high",
-  "possible_scam",
-  "emergency",
-  "unknown",
-]);
+// Coerce null/undefined to empty array
+const safeStrArray = z
+  .array(z.string().nullable().optional().transform((v) => v ?? ""))
+  .nullable()
+  .optional()
+  .transform((v) => v ?? []);
 
-export const ConfidenceSchema = z.enum(["low", "medium", "high"]);
+export const CategorySchema = z
+  .enum([
+    "bill", "insurance", "medical", "bank_alert", "possible_scam",
+    "school_form", "work_hr", "legal_notice", "government", "subscription",
+    "app_error", "device_error", "appliance", "parking_ticket",
+    "shipping_delivery", "tax", "mortgage_rent", "utility",
+    "general_message", "unknown",
+  ])
+  .catch("unknown");
+
+export const UrgencySchema = z
+  .enum(["low", "medium", "high", "possible_scam", "emergency", "unknown"])
+  .catch("unknown");
+
+export const ConfidenceSchema = z
+  .enum(["low", "medium", "high"])
+  .catch("medium");
 
 export const KeyDetailSchema = z.object({
-  label: z.string(),
-  value: z.string(),
+  label: safeStr,
+  value: safeStr,
 });
 
 export const DetectedDeadlineSchema = z.object({
-  label: z.string(),
-  dateText: z.string(),
-  explanation: z.string(),
+  label: safeStr,
+  dateText: safeStr,
+  explanation: safeStr,
 });
 
 export const ShareCardSchema = z.object({
-  title: z.string(),
-  urgency: z.string(),
-  meaning: z.string(),
-  nextStep: z.string(),
+  title: safeStr,
+  urgency: safeStr,
+  meaning: safeStr,
+  nextStep: safeStr,
 });
 
 export const ClearItAnalysisSchema = z.object({
-  id: z.string(),
-  createdAt: z.string(),
+  id: safeStr,
+  createdAt: safeStr,
   category: CategorySchema,
   urgency: UrgencySchema,
   confidence: ConfidenceSchema,
-  plainTitle: z.string(),
-  oneSentenceSummary: z.string(),
-  whatThisIs: z.string(),
-  whatItMeans: z.string(),
-  whyItMatters: z.string(),
-  nextSteps: z.array(z.string()),
-  warnings: z.array(z.string()),
-  keyDetails: z.array(KeyDetailSchema),
-  detectedDeadlines: z.array(DetectedDeadlineSchema),
-  suggestedQuestions: z.array(z.string()),
-  callScript: z.string(),
-  replyDraft: z.string(),
-  checklist: z.array(z.string()),
-  simplifiedExplanation: z.string(),
-  shareCard: ShareCardSchema,
-  disclaimer: z.string(),
+  plainTitle: safeStr,
+  oneSentenceSummary: safeStr,
+  whatThisIs: safeStr,
+  whatItMeans: safeStr,
+  whyItMatters: safeStr,
+  nextSteps: safeStrArray,
+  warnings: safeStrArray,
+  keyDetails: z
+    .array(KeyDetailSchema)
+    .nullable()
+    .optional()
+    .transform((v) => v ?? []),
+  detectedDeadlines: z
+    .array(DetectedDeadlineSchema)
+    .nullable()
+    .optional()
+    .transform((v) => v ?? []),
+  suggestedQuestions: safeStrArray,
+  callScript: safeStr,
+  replyDraft: safeStr,
+  checklist: safeStrArray,
+  simplifiedExplanation: safeStr,
+  shareCard: ShareCardSchema.nullable().optional().transform(
+    (v) => v ?? { title: "", urgency: "", meaning: "", nextStep: "" }
+  ),
+  disclaimer: safeStr,
 });
 
 export type ClearItAnalysisZod = z.infer<typeof ClearItAnalysisSchema>;

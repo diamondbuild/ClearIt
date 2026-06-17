@@ -6,8 +6,8 @@ import { ShieldCheck } from "lucide-react";
 
 const steps = [
   { label: "Reading the content…", emoji: "📖" },
-  { label: "Figuring out what it is…", emoji: "🔍" },
-  { label: "Checking urgency…", emoji: "⚡" },
+  { label: "Searching for context…", emoji: "🌐" },
+  { label: "Checking urgency & safety…", emoji: "⚡" },
   { label: "Creating next steps…", emoji: "✅" },
 ];
 

@@ -108,7 +108,6 @@ export async function analyzeWithClearItEngine(
       instructions: CLEARIT_SYSTEM_PROMPT,
       input: [{ role: "user", content: contentParts }],
       max_output_tokens: 4096,
-      temperature: 0.2,
     } as Parameters<typeof openai.responses.create>[0]) as OpenAI.Responses.Response;
 
     // Extract text from the response output

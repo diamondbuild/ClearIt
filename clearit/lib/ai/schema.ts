@@ -16,7 +16,8 @@ export const CategorySchema = z
     "school_form", "work_hr", "legal_notice", "government", "subscription",
     "app_error", "device_error", "appliance", "parking_ticket",
     "shipping_delivery", "tax", "mortgage_rent", "utility",
-    "general_message", "unknown",
+    "general_message", "meme_image", "person_public_figure", "product_object",
+    "nature_animal", "place_landmark", "artwork_media", "screenshot_ui", "unknown",
   ])
   .catch("unknown");
 

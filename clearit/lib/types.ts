@@ -18,6 +18,13 @@ export type Category =
   | "mortgage_rent"
   | "utility"
   | "general_message"
+  | "meme_image"
+  | "person_public_figure"
+  | "product_object"
+  | "nature_animal"
+  | "place_landmark"
+  | "artwork_media"
+  | "screenshot_ui"
   | "unknown";
 
 export type Urgency =

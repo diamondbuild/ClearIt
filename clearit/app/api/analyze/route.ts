@@ -166,8 +166,10 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
       .filter(Boolean)
       .join("\n");
 
-    // Demo mode — no key set at all
-    if (!process.env.OPENAI_API_KEY) {
+    // Demo mode — no key set at all, or empty string
+    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    if (!apiKey) {
+      console.log("No OPENAI_API_KEY set — returning demo result");
       await new Promise((r) => setTimeout(r, 2000));
       return NextResponse.json({ success: true, data: getRandomDemoResult() });
     }
@@ -182,7 +184,14 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
       });
       return NextResponse.json({ success: true, data: result });
     } catch (aiError) {
-      console.error("AI analysis error:", aiError);
+      // Log full error details for debugging in Vercel logs
+      console.error("AI analysis error details:", {
+        message: aiError instanceof Error ? aiError.message : String(aiError),
+        name: aiError instanceof Error ? aiError.name : "Unknown",
+        imageCount: allImages.length,
+        hasText: !!combinedText,
+        model: process.env.OPENAI_MODEL ?? "gpt-4o",
+      });
       const { message, status, fallbackToDemo } = classifyAiError(aiError);
 
       // For auth/model errors in production, fall back to demo so the UI still works

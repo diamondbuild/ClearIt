@@ -52,8 +52,13 @@ export const CLEARIT_USER_PROMPT = (
   if (hasText) parts.push("extracted text");
   if (hasContext) parts.push("additional context from user");
 
-  return `Please analyze this ${parts.join(", ")} and return a complete ClearItAnalysis JSON object.
+  // When only image(s) with no accompanying text — ask the model to identify first
+  const identifyFirst = hasImage && !hasText
+    ? `\nIMPORTANT: First, identify exactly what you see. Who or what is this? Use web search if needed to identify any recognizable person, character, meme, logo, product, animal, place, document, message, error, or object. Be specific — name it if you can. Then complete your full analysis based on what it actually is.\n`
+    : "";
 
+  return `Please analyze this ${parts.join(", ")} and return a complete ClearItAnalysis JSON object.
+${identifyFirst}
 ${imageCount > 1 ? `Note: ${imageCount} images have been provided. They represent different pages or sides of the same document. Analyze them together as a whole.` : ""}
 
 The JSON must have ALL of these fields:

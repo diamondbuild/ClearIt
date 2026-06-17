@@ -13,14 +13,14 @@ import {
 import { AppShell } from "@/components/AppShell";
 
 const exampleChips = [
-  "Bill",
-  "School form",
-  "Insurance letter",
-  "App error",
-  "Bank alert",
-  "Medical message",
-  "Scam check",
-  "Parking ticket",
+  "What is this meme?",
+  "Is this a scam?",
+  "What is this pill?",
+  "Explain this bill",
+  "Who is this person?",
+  "What is this error?",
+  "Is this letter real?",
+  "What does this say?",
 ];
 
 const trustFeatures = [
@@ -62,14 +62,13 @@ export default function HomePage() {
             className="text-base font-medium mb-3"
             style={{ color: "var(--primary)" }}
           >
-            Take a picture. Know what to do.
+            Take a picture. Know what it is.
           </p>
           <p
             className="text-sm leading-relaxed max-w-xs mx-auto"
             style={{ color: "var(--muted-foreground)" }}
           >
-            ClearIt explains confusing bills, forms, alerts, errors, and
-            messages in plain English.
+            Point it at anything — a bill, a meme, a pill, a person, an error, a letter. ClearIt identifies it and tells you exactly what you need to know.
           </p>
         </motion.div>
 

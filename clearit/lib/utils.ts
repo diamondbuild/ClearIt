@@ -45,6 +45,13 @@ export function categoryLabel(category: Category): string {
     mortgage_rent: "Mortgage / Rent",
     utility: "Utility Bill",
     general_message: "General Message",
+    meme_image: "Meme / Image",
+    person_public_figure: "Person",
+    product_object: "Product",
+    nature_animal: "Nature / Animal",
+    place_landmark: "Place",
+    artwork_media: "Art / Media",
+    screenshot_ui: "Screenshot",
     unknown: "Unknown",
   };
   return labels[category] ?? category;

@@ -23,7 +23,8 @@ export default function SettingsPage() {
   const [cleared, setCleared] = useState(false);
 
   useEffect(() => {
-    setDemoMode(window.localStorage.getItem(demoModeKey) === "true");
+    const timer = window.setTimeout(() => setDemoMode(window.localStorage.getItem(demoModeKey) === "true"), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   function toggleDemoMode() {

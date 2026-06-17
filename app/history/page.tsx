@@ -14,7 +14,8 @@ export default function HistoryPage() {
   const [items, setItems] = useState<HistoryItem[]>([]);
 
   useEffect(() => {
-    setItems(getHistory());
+    const timer = window.setTimeout(() => setItems(getHistory()), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   function removeAll() {

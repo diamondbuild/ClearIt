@@ -16,26 +16,30 @@ export default function ResultPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const historyId = params.get("id");
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      const historyId = params.get("id");
 
-    if (historyId) {
-      const item = getHistoryItem(historyId);
-      if (item) {
-        setResult(item.result);
-        setOriginalText(item.originalTextSnippet);
-        setImageUsed(item.imageUsed);
+      if (historyId) {
+        const item = getHistoryItem(historyId);
+        if (item) {
+          setResult(item.result);
+          setOriginalText(item.originalTextSnippet);
+          setImageUsed(item.imageUsed);
+        }
+        setReady(true);
+        return;
       }
-      setReady(true);
-      return;
-    }
 
-    const latest = getLastResult();
-    const input = getLastInput();
-    setResult(latest);
-    setOriginalText(input.text);
-    setImageUsed(input.imageUsed);
-    setReady(true);
+      const latest = getLastResult();
+      const input = getLastInput();
+      setResult(latest);
+      setOriginalText(input.text);
+      setImageUsed(input.imageUsed);
+      setReady(true);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   if (!ready) {

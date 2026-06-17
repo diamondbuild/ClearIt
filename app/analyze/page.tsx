@@ -13,6 +13,10 @@ import type { ClearItAnalysis } from "@/lib/types";
 const allowedTypes = new Set(["image/png", "image/jpeg", "image/jpg", "image/heic", "image/heif"]);
 const demoModeKey = "clearit.demoMode.v1";
 
+function isClearItAnalysis(payload: unknown): payload is ClearItAnalysis {
+  return Boolean(payload && typeof payload === "object" && "plainTitle" in payload && "nextSteps" in payload);
+}
+
 function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -125,8 +129,8 @@ export default function AnalyzePage() {
 
       const payload = (await response.json()) as ClearItAnalysis | { error?: string };
 
-      if (!response.ok || "error" in payload) {
-        throw new Error("error" in payload ? payload.error : "Network error");
+      if (!response.ok || !isClearItAnalysis(payload)) {
+        throw new Error("error" in payload && payload.error ? payload.error : "Network error");
       }
 
       storeLastResult(payload);

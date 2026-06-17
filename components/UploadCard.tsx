@@ -47,6 +47,7 @@ export const UploadCard = ({ previewUrl, fileName, onPickFile }: UploadCardProps
       {previewUrl ? (
         <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
           <div className="relative mb-3 h-48 overflow-hidden rounded-xl border border-slate-200 bg-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={previewUrl}
               alt="Selected upload preview"

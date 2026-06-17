@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { AppShell } from "@/components/AppShell";
 import { LoadingAnalysis } from "@/components/LoadingAnalysis";
@@ -56,32 +56,29 @@ const maybeCompressImage = async (file: File) => {
 
 export default function AnalyzePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const [text, setText] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [demoMode, setDemoMode] = useState(false);
+  const [demoMode] = useState(() =>
+    typeof window !== "undefined" ? getDemoMode() : false,
+  );
 
-  const shouldFocusText = searchParams.get("focus") === "text";
+  const shouldFocusText =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("focus") === "text";
 
-  useEffect(() => {
-    setDemoMode(getDemoMode());
-  }, []);
-
-  useEffect(() => {
-    if (!selectedFile) {
-      setPreviewUrl(null);
-      return;
-    }
-
-    const url = URL.createObjectURL(selectedFile);
-    setPreviewUrl(url);
-
-    return () => URL.revokeObjectURL(url);
+  const previewUrl = useMemo(() => {
+    if (!selectedFile) return null;
+    return URL.createObjectURL(selectedFile);
   }, [selectedFile]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const onPickFile = async (file: File | null) => {
     setError("");

@@ -1,18 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Info, Shield } from "lucide-react";
 
 import { AppShell } from "@/components/AppShell";
 import { clearHistory, getDemoMode, setDemoMode } from "@/lib/storage/history";
 
 export default function SettingsPage() {
-  const [demoMode, setDemoModeState] = useState(false);
+  const [demoMode, setDemoModeState] = useState(() =>
+    typeof window !== "undefined" ? getDemoMode() : false,
+  );
   const [historyCleared, setHistoryCleared] = useState(false);
-
-  useEffect(() => {
-    setDemoModeState(getDemoMode());
-  }, []);
 
   const onToggleDemoMode = (enabled: boolean) => {
     setDemoModeState(enabled);

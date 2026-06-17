@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   CircleCheck,
   ClipboardList,
@@ -17,7 +17,6 @@ import { AppShell } from "@/components/AppShell";
 import { ClearItCard } from "@/components/ClearItCard";
 import { EmptyState } from "@/components/EmptyState";
 import { ResultCard } from "@/components/ResultCard";
-import type { ClearItAnalysis } from "@/lib/types";
 import {
   getCurrentResult,
   getHistoryItemById,
@@ -31,38 +30,42 @@ type HelperContent = {
 
 export default function ResultPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const [analysis, setAnalysis] = useState<ClearItAnalysis | null>(null);
-  const [textSnippet, setTextSnippet] = useState("");
-  const [usedImage, setUsedImage] = useState(false);
   const [helperContent, setHelperContent] = useState<HelperContent | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [, setStorageTick] = useState(0);
   const [showShareCard, setShowShareCard] = useState(false);
 
-  const resultId = searchParams.get("id");
+  const resultId =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("id")
+      : null;
 
-  useEffect(() => {
+  const resolved = (() => {
+    if (typeof window === "undefined") return null;
+
     const current = getCurrentResult();
     if (current && (!resultId || current.result.id === resultId)) {
-      setAnalysis(current.result);
-      setTextSnippet(current.originalTextSnippet);
-      setUsedImage(current.usedImage);
-      setSaved(Boolean(getHistoryItemById(current.result.id)));
-      return;
+      return {
+        analysis: current.result,
+        textSnippet: current.originalTextSnippet,
+        usedImage: current.usedImage,
+      };
     }
 
-    if (!resultId) return;
+    if (!resultId) return null;
     const historyItem = getHistoryItemById(resultId);
-    if (!historyItem) return;
+    if (!historyItem) return null;
 
-    setAnalysis(historyItem.result);
-    setTextSnippet(historyItem.originalTextSnippet);
-    setUsedImage(historyItem.usedImage);
-    setSaved(true);
-  }, [resultId]);
+    return {
+      analysis: historyItem.result,
+      textSnippet: historyItem.originalTextSnippet,
+      usedImage: historyItem.usedImage,
+    };
+  })();
 
-  const helper = useMemo(() => helperContent, [helperContent]);
+  const analysis = resolved?.analysis ?? null;
+  const textSnippet = resolved?.textSnippet ?? "";
+  const usedImage = resolved?.usedImage ?? false;
+  const alreadySaved = analysis ? Boolean(getHistoryItemById(analysis.id)) : false;
 
   const onSave = () => {
     if (!analysis) return;
@@ -71,7 +74,7 @@ export default function ResultPage() {
       originalTextSnippet: textSnippet,
       usedImage,
     });
-    setSaved(true);
+    setStorageTick((tick) => tick + 1);
   };
 
   if (!analysis) {
@@ -140,9 +143,9 @@ export default function ResultPage() {
               />
               <ActionButton
                 icon={Save}
-                label={saved ? "Saved to history" : "Save to history"}
+                label={alreadySaved ? "Saved to history" : "Save to history"}
                 onClick={onSave}
-                disabled={saved}
+                disabled={alreadySaved}
               />
             </div>
             <button
@@ -174,11 +177,13 @@ export default function ResultPage() {
         </section>
       ) : null}
 
-      {helper ? (
+      {helperContent ? (
         <section className="clearit-card border-indigo-200 bg-indigo-50/60">
-          <h3 className="font-display text-lg font-semibold text-indigo-900">{helper.title}</h3>
+          <h3 className="font-display text-lg font-semibold text-indigo-900">
+            {helperContent.title}
+          </h3>
           <pre className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-800">
-            {helper.body}
+            {helperContent.body}
           </pre>
         </section>
       ) : null}

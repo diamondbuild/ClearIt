@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FileImage, FileText } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { AppShell } from "@/components/AppShell";
 import { EmptyState } from "@/components/EmptyState";
@@ -12,11 +12,9 @@ import type { HistoryItem } from "@/lib/types";
 import { categoryLabelMap, formatDateTime } from "@/lib/utils";
 
 export default function HistoryPage() {
-  const [items, setItems] = useState<HistoryItem[]>([]);
-
-  useEffect(() => {
-    setItems(getHistory());
-  }, []);
+  const [items] = useState<HistoryItem[]>(() =>
+    typeof window !== "undefined" ? getHistory() : [],
+  );
 
   return (
     <AppShell className="space-y-4">

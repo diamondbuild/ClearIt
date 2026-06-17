@@ -168,14 +168,16 @@ export async function analyzeWithClearItEngine(
 
   let parsed: unknown;
   try {
+    // Strip markdown code fences if model wrapped the JSON
     const cleaned = rawContent
-      .replace(/^```json\n?/, "")
-      .replace(/^```\n?/, "")
-      .replace(/\n?```$/, "")
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/\s*```$/i, "")
       .trim();
     parsed = JSON.parse(cleaned);
-  } catch {
-    throw new Error("AI returned invalid JSON: " + rawContent.slice(0, 200));
+  } catch (jsonErr) {
+    console.error("JSON parse failed. Raw content:", rawContent.slice(0, 500));
+    throw new Error("JSON_PARSE_FAILED: " + rawContent.slice(0, 200));
   }
 
   const withDefaults = {
@@ -184,6 +186,11 @@ export async function analyzeWithClearItEngine(
     ...(parsed as Record<string, unknown>),
   };
 
-  const validated = ClearItAnalysisSchema.parse(withDefaults);
-  return applySafetyPlaybook(validated as ClearItAnalysis);
+  try {
+    const validated = ClearItAnalysisSchema.parse(withDefaults);
+    return applySafetyPlaybook(validated as ClearItAnalysis);
+  } catch (zodErr) {
+    console.error("Zod validation failed:", zodErr);
+    throw new Error("ZOD_VALIDATION_FAILED: " + String(zodErr).slice(0, 300));
+  }
 }

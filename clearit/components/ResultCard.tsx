@@ -21,6 +21,7 @@ interface ResultCardProps {
   onAnalyzeAnother?: () => void;
 }
 
+
 // Urgency top bar color
 function urgencyBarColor(urgency: string): string {
   if (urgency === "possible_scam") return "linear-gradient(90deg, #E0322E, #FF6A45)";
@@ -312,14 +313,20 @@ export function ResultCard({ analysis, onSave, isSaved, onAnalyzeAnother }: Resu
 
       {/* Bottom actions */}
       <div className="flex gap-2 pt-1">
-        {onSave && (
+        {/* Auto-saved indicator */}
+        {isSaved && (
+          <div className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-sm font-semibold border"
+            style={{ background: "var(--u-low-bg)", borderColor: "var(--u-low-dot)", color: "var(--u-low-text)" }}>
+            <Bookmark size={15} fill="currentColor" />
+            Saved
+          </div>
+        )}
+        {onSave && !isSaved && (
           <button onClick={onSave}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold transition-all border active:scale-95"
-            style={isSaved
-              ? { background: "var(--u-low-bg)", borderColor: "var(--u-low-dot)", color: "var(--u-low-text)" }
-              : { background: "var(--surface)", borderColor: "var(--border)", color: "var(--ink)" }}>
-            <Bookmark size={16} fill={isSaved ? "currentColor" : "none"} />
-            {isSaved ? "Saved" : "Save"}
+            className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all border active:scale-95"
+            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--ink)" }}>
+            <Bookmark size={15} fill="none" />
+            Save
           </button>
         )}
         {onAnalyzeAnother && (

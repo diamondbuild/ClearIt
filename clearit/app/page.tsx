@@ -9,11 +9,12 @@ import { getHistory } from "@/lib/storage/history";
 import { HistoryItem, Urgency } from "@/lib/types";
 import { categoryLabel } from "@/lib/utils";
 
+// Each chip pre-fills a text hint in the analyze screen
 const chips = [
-  "Is this a scam?",
-  "Explain this bill",
-  "What is this pill?",
-  "Who is this?",
+  { label: "Is this a scam?",   hint: "Is this a scam? Please check for scam signals and advise me." },
+  { label: "Explain this bill", hint: "Please explain this bill — what do I owe, when is it due, and what do I do?" },
+  { label: "What is this pill?", hint: "What is this medication? What is it used for, and what should I know?" },
+  { label: "Who is this?",      hint: "Who or what is this? Please identify and explain." },
 ];
 
 function urgencyDotColor(urgency: Urgency): string {
@@ -130,13 +131,16 @@ export default function HomePage() {
           <br />Point and get a plain answer.
         </p>
 
-        {/* Chips */}
+        {/* Chips — each pre-fills a specific text hint */}
         <div className="flex gap-2 overflow-x-auto mt-3 pb-0.5 w-full" style={{ scrollbarWidth: "none" }}>
           {chips.map(chip => (
-            <button key={chip} onClick={() => router.push("/analyze")}
+            <button
+              key={chip.label}
+              onClick={() => router.push(`/analyze?mode=text&hint=${encodeURIComponent(chip.hint)}`)}
               className="flex-shrink-0 px-3.5 py-2 rounded-full text-sm font-medium text-white transition-all active:scale-95 whitespace-nowrap"
-              style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.12)" }}>
-              {chip}
+              style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.12)" }}
+            >
+              {chip.label}
             </button>
           ))}
         </div>
@@ -211,29 +215,47 @@ export default function HomePage() {
       </div>
 
       {/* ── Capture controls ───────────────────────── */}
-      <div className="flex items-center justify-center gap-8 pb-20 pt-3 flex-shrink-0">
-        <button onClick={() => router.push("/analyze")}
-          className="w-[50px] h-[50px] rounded-2xl flex items-center justify-center transition-all active:scale-90"
-          style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.12)" }}>
-          <ImageIcon size={22} className="text-white" strokeWidth={2} />
-        </button>
+      {/* Gallery = opens file picker | FAB = opens camera | no third button */}
+      <div className="flex items-center justify-center gap-10 pb-20 pt-3 flex-shrink-0">
+        {/* Gallery — picks an existing photo or file */}
+        <div className="flex flex-col items-center gap-1.5">
+          <button
+            onClick={() => router.push("/analyze?action=gallery")}
+            className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center transition-all active:scale-90"
+            style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.12)" }}
+          >
+            <ImageIcon size={22} className="text-white" strokeWidth={2} />
+          </button>
+          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,.4)" }}>Gallery</span>
+        </div>
 
-        {/* Shutter FAB */}
-        <button onClick={() => router.push("/analyze")}
-          className="flex items-center justify-center transition-all active:scale-90 relative"
-          style={{
-            width: 72, height: 72, borderRadius: "50%",
-            background: "var(--brand-gradient)",
-            boxShadow: "var(--brand-glow), 0 0 0 5px rgba(108,60,224,.18)",
-          }}>
-          <Camera size={28} className="text-white" strokeWidth={2.2} />
-        </button>
+        {/* Shutter FAB — opens camera */}
+        <div className="flex flex-col items-center gap-1.5">
+          <button
+            onClick={() => router.push("/analyze?action=camera")}
+            className="flex items-center justify-center transition-all active:scale-90"
+            style={{
+              width: 72, height: 72, borderRadius: "50%",
+              background: "var(--brand-gradient)",
+              boxShadow: "var(--brand-glow), 0 0 0 5px rgba(108,60,224,.18)",
+            }}
+          >
+            <Camera size={28} className="text-white" strokeWidth={2.2} />
+          </button>
+          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,.5)" }}>Camera</span>
+        </div>
 
-        <button onClick={() => router.push("/analyze")}
-          className="w-[50px] h-[50px] rounded-2xl flex items-center justify-center transition-all active:scale-90"
-          style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.12)" }}>
-          <ScanLine size={22} className="text-white" strokeWidth={2} />
-        </button>
+        {/* Paste text */}
+        <div className="flex flex-col items-center gap-1.5">
+          <button
+            onClick={() => router.push("/analyze?mode=text")}
+            className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center transition-all active:scale-90"
+            style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.12)" }}
+          >
+            <ScanLine size={22} className="text-white" strokeWidth={2} />
+          </button>
+          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,.4)" }}>Paste text</span>
+        </div>
       </div>
 
       <BottomNav dark />

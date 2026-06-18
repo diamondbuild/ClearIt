@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, Suspense } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Camera, Image as ImageIcon, X, AlertCircle, Loader2, Lock, Plus, FileText } from "lucide-react";
@@ -30,11 +30,13 @@ function AnalyzePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialMode = searchParams.get("mode") === "text" ? "text" : "upload";
+  const action = searchParams.get("action"); // "camera" | "gallery"
+  const hint = searchParams.get("hint");     // pre-fill text
 
   const [mode, setMode] = useState<"upload" | "text">(initialMode as "upload" | "text");
   const [images, setImages] = useState<SelectedImage[]>([]);
   const [docFile, setDocFile] = useState<SelectedFile | null>(null);
-  const [text, setText] = useState("");
+  const [text, setText] = useState(hint ? decodeURIComponent(hint) : "");
   const [additionalContext, setAdditionalContext] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [processingFile, setProcessingFile] = useState(false);
@@ -43,6 +45,15 @@ function AnalyzePage() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-trigger camera or gallery if coming from home screen FAB/gallery button
+  useEffect(() => {
+    if (action === "camera") {
+      setTimeout(() => cameraInputRef.current?.click(), 300);
+    } else if (action === "gallery") {
+      setTimeout(() => imageInputRef.current?.click(), 300);
+    }
+  }, [action]);
 
   const hasInput = images.length > 0 || !!docFile || text.trim().length > 10;
 

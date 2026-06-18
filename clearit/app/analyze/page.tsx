@@ -3,81 +3,38 @@
 import { useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Upload,
-  Camera,
-  X,
-  Image as ImageIcon,
-  AlertCircle,
-  Type,
-  ScanLine,
-  FileText,
-  FilePlus,
-  Plus,
-  Loader2,
-  MessageSquarePlus,
-} from "lucide-react";
+import { Camera, Image as ImageIcon, X, AlertCircle, Loader2, Lock, Plus, FileText } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { LoadingAnalysis } from "@/components/LoadingAnalysis";
 import { compressImage, cn } from "@/lib/utils";
 import { ClearItAnalysis } from "@/lib/types";
 
 const MAX_IMAGES = 6;
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/heic", "image/heif", "image/webp"];
-const ACCEPTED_DOC_TYPES = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"];
-const ACCEPTED_DOC_EXTENSIONS = /\.(pdf|docx|doc)$/i;
 
-interface SelectedImage {
-  file: File;
-  preview: string;
-  id: string;
-}
+interface SelectedImage { file: File; preview: string; id: string; }
+interface SelectedFile { file: File; type: "pdf" | "docx" | "doc"; name: string; size: number; }
 
-interface SelectedFile {
-  file: File;
-  type: "pdf" | "docx" | "doc";
-  name: string;
-  size: number;
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+function formatFileSize(b: number) {
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(0)} KB`;
+  return `${(b / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function fileTypeFromFile(file: File): "pdf" | "docx" | "doc" | null {
-  if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) return "pdf";
-  if (
-    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-    file.name.toLowerCase().endsWith(".docx")
-  )
-    return "docx";
-  if (file.type === "application/msword" || file.name.toLowerCase().endsWith(".doc")) return "doc";
+  if (file.type === "application/pdf" || file.name.endsWith(".pdf")) return "pdf";
+  if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || file.name.endsWith(".docx")) return "docx";
+  if (file.type === "application/msword" || file.name.endsWith(".doc")) return "doc";
   return null;
-}
-
-function fileTypeIcon(type: "pdf" | "docx" | "doc") {
-  return <FileText size={28} className={type === "pdf" ? "text-red-500" : "text-blue-500"} />;
 }
 
 function AnalyzePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialMode = searchParams.get("mode") === "text" ? "text" : "image";
+  const initialMode = searchParams.get("mode") === "text" ? "text" : "upload";
 
-  const [mode, setMode] = useState<"image" | "file" | "text">(initialMode as "image" | "file" | "text");
-
-  // Image mode state
+  const [mode, setMode] = useState<"upload" | "text">(initialMode as "upload" | "text");
   const [images, setImages] = useState<SelectedImage[]>([]);
-
-  // File mode state
-  const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
-
-  // Text mode state
+  const [docFile, setDocFile] = useState<SelectedFile | null>(null);
   const [text, setText] = useState("");
-
-  // Shared state
   const [additionalContext, setAdditionalContext] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [processingFile, setProcessingFile] = useState(false);
@@ -87,172 +44,87 @@ function AnalyzePage() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const hasInput =
-    mode === "image"
-      ? images.length > 0
-      : mode === "file"
-      ? !!selectedFile
-      : text.trim().length > 10;
+  const hasInput = images.length > 0 || !!docFile || text.trim().length > 10;
 
-  // === Image handlers ===
   const handleImageFiles = async (files: FileList | File[]) => {
     setError(null);
-    const fileArr = Array.from(files);
+    const arr = Array.from(files);
     const remaining = MAX_IMAGES - images.length;
-    if (remaining <= 0) {
-      setError(`You can add up to ${MAX_IMAGES} images.`);
-      return;
-    }
-
-    const toAdd = fileArr.slice(0, remaining);
-    const newImages: SelectedImage[] = [];
-
+    const toAdd = arr.slice(0, remaining);
+    const newImgs: SelectedImage[] = [];
     for (const file of toAdd) {
-      if (!ACCEPTED_IMAGE_TYPES.includes(file.type) && !file.name.match(/\.(heic|heif)$/i)) {
-        setError("Please use JPG, PNG, HEIC, or WebP images.");
-        continue;
-      }
-      if (file.size > 20 * 1024 * 1024) {
-        setError("One or more images are too large (max 20MB each).");
-        continue;
-      }
-      const preview = URL.createObjectURL(file);
-      newImages.push({ file, preview, id: `${Date.now()}-${Math.random()}` });
+      if (file.size > 20 * 1024 * 1024) { setError("Image too large (max 20MB)."); continue; }
+      newImgs.push({ file, preview: URL.createObjectURL(file), id: `${Date.now()}-${Math.random()}` });
     }
-
-    setImages((prev) => [...prev, ...newImages]);
+    setImages(prev => [...prev, ...newImgs]);
   };
 
-  const removeImage = (id: string) => {
-    setImages((prev) => prev.filter((img) => img.id !== id));
-  };
-
-  // === File handlers ===
-  const handleDocFile = async (file: File) => {
-    setError(null);
+  const handleDocFile = (file: File) => {
     const type = fileTypeFromFile(file);
-    if (!type) {
-      setError("Please upload a PDF, DOCX, or DOC file.");
-      return;
-    }
-    if (file.size > 25 * 1024 * 1024) {
-      setError("File is too large (max 25MB).");
-      return;
-    }
-    setSelectedFile({ file, type, name: file.name, size: file.size });
+    if (!type) { setError("Please upload a PDF, DOCX, or DOC file."); return; }
+    setDocFile({ file, type, name: file.name, size: file.size });
+    setError(null);
   };
 
-  // === Submit ===
   const handleAnalyze = async () => {
     if (!hasInput) return;
     setIsAnalyzing(true);
     setError(null);
-
     try {
       let body: Record<string, unknown> = {};
-
-      if (mode === "image") {
+      if (images.length > 0) {
         setProcessingFile(true);
-        const compressed = await Promise.all(
-          images.map(async (img) => {
-            const base64 = await compressImage(img.file);
-            const mediaType = img.file.type === "image/png" ? "image/png" : "image/jpeg";
-            return { base64, mediaType };
-          })
-        );
+        const compressed = await Promise.all(images.map(async img => ({
+          base64: await compressImage(img.file),
+          mediaType: img.file.type === "image/png" ? "image/png" : "image/jpeg",
+        })));
         setProcessingFile(false);
         body = {
-          images: compressed.map((c) => c.base64),
-          imageMediaTypes: compressed.map((c) => c.mediaType),
+          images: compressed.map(c => c.base64),
+          imageMediaTypes: compressed.map(c => c.mediaType),
           additionalContext: additionalContext.trim() || undefined,
         };
-      } else if (mode === "file" && selectedFile) {
+      } else if (docFile) {
         setProcessingFile(true);
-        if (selectedFile.type === "pdf") {
-          // Render PDF pages to images client-side
+        if (docFile.type === "pdf") {
           const { renderPdfToImages, extractPdfText } = await import("@/lib/pdf/pdfUtils");
           const [pageImages, extractedText] = await Promise.all([
-            renderPdfToImages(selectedFile.file, 6),
-            extractPdfText(selectedFile.file).catch(() => ""),
+            renderPdfToImages(docFile.file, 4),
+            extractPdfText(docFile.file).catch(() => ""),
           ]);
           setProcessingFile(false);
-
-          if (pageImages.length === 0 && !extractedText) {
-            throw new Error(
-              "Couldn't read this PDF. Try taking a photo of it instead."
-            );
-          }
-
           body = {
-            images: pageImages.map((p) => p.base64),
+            images: pageImages.map(p => p.base64),
             imageMediaTypes: pageImages.map(() => "image/jpeg"),
             text: extractedText || undefined,
             additionalContext: additionalContext.trim() || undefined,
-            fileName: selectedFile.name,
+            fileName: docFile.name,
           };
         } else {
-          // DOCX/DOC: send to server for text extraction
-          const arrayBuffer = await selectedFile.file.arrayBuffer();
-          const base64 = btoa(
-            String.fromCharCode(...new Uint8Array(arrayBuffer))
-          );
+          const ab = await docFile.file.arrayBuffer();
+          const b64 = btoa(String.fromCharCode(...new Uint8Array(ab)));
           setProcessingFile(false);
-          body = {
-            docxBase64: base64,
-            fileType: selectedFile.type,
-            fileName: selectedFile.name,
-            additionalContext: additionalContext.trim() || undefined,
-          };
+          body = { docxBase64: b64, fileType: docFile.type, fileName: docFile.name, additionalContext: additionalContext.trim() || undefined };
         }
       } else {
-        body = {
-          text: text.trim(),
-          additionalContext: additionalContext.trim() || undefined,
-        };
+        body = { text: text.trim(), additionalContext: additionalContext.trim() || undefined };
       }
 
       const bodyString = JSON.stringify(body);
-      // Vercel serverless payload limit is ~4.5MB
-      if (bodyString.length > 4 * 1024 * 1024) {
-        throw new Error(
-          "The total file size is too large to send. Try fewer or smaller images, or paste the text instead."
-        );
-      }
+      if (bodyString.length > 4 * 1024 * 1024) throw new Error("File is too large to send. Try fewer or smaller images.");
 
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: bodyString,
-      });
-
+      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: bodyString });
       const data = await res.json();
-
-      if (!data.success || !data.data) {
-        throw new Error(data.error || "Couldn't analyze this. Please try again.");
-      }
-
+      if (!data.success || !data.data) throw new Error(data.error || "Couldn't analyze this.");
       const analysis: ClearItAnalysis = data.data;
-      const key = `clearit_pending_${analysis.id}`;
-      sessionStorage.setItem(
-        key,
-        JSON.stringify({
-          analysis,
-          textSnippet:
-            mode === "text"
-              ? text.slice(0, 200)
-              : selectedFile
-              ? `File: ${selectedFile.name}`
-              : `${images.length} image${images.length > 1 ? "s" : ""}`,
-          usedImage: mode === "image" || (mode === "file" && selectedFile?.type === "pdf"),
-        })
-      );
+      sessionStorage.setItem(`clearit_pending_${analysis.id}`, JSON.stringify({
+        analysis,
+        textSnippet: mode === "text" ? text.slice(0, 200) : docFile ? `File: ${docFile.name}` : `${images.length} image${images.length > 1 ? "s" : ""}`,
+        usedImage: images.length > 0 || (!!docFile && docFile.type === "pdf"),
+      }));
       router.push(`/result?id=${analysis.id}`);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again."
-      );
+      setError(err instanceof Error ? err.message : "Something went wrong.");
       setIsAnalyzing(false);
       setProcessingFile(false);
     }
@@ -260,386 +132,172 @@ function AnalyzePage() {
 
   if (isAnalyzing) {
     return (
-      <AppShell title="Analyzing…">
+      <div className="flex flex-col min-h-screen max-w-md mx-auto" style={{ background: "#141019" }}>
         <LoadingAnalysis />
-      </AppShell>
+      </div>
     );
   }
 
-  const showContextBox = hasInput;
-
   return (
-    <AppShell title="Explain something">
-      <div className="flex flex-col px-4 pt-4 pb-6 gap-5">
-        {/* Mode toggle */}
-        <div
-          className="flex rounded-xl p-1 gap-1"
-          style={{ background: "var(--muted)" }}
+    <AppShell title="Explain something" backHref="/">
+      <div className="px-5 pt-4 pb-8 flex flex-col gap-5">
+        {/* Headline */}
+        <h1
+          className="text-2xl font-extrabold tracking-tight"
+          style={{ fontFamily: "var(--font-bricolage), sans-serif", color: "var(--ink)", letterSpacing: "-0.015em" }}
         >
-          {(
-            [
-              { id: "image", label: "Photos", icon: <ImageIcon size={15} /> },
-              { id: "file", label: "File", icon: <FileText size={15} /> },
-              { id: "text", label: "Paste text", icon: <Type size={15} /> },
-            ] as const
-          ).map(({ id, label, icon }) => (
-            <button
-              key={id}
-              onClick={() => {
-                setMode(id);
-                setError(null);
-              }}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-semibold transition-all"
-              style={
-                mode === id
-                  ? {
-                      background: "var(--card)",
-                      color: "var(--primary)",
-                      boxShadow: "var(--shadow-sm)",
-                    }
-                  : { color: "var(--muted-foreground)" }
-              }
-            >
-              {icon}
-              {label}
-            </button>
-          ))}
-        </div>
+          Show me what&apos;s confusing.
+        </h1>
 
-        {/* Content area */}
+        {/* Upload dropzone */}
         <AnimatePresence mode="wait">
-          {/* === IMAGE MODE === */}
-          {mode === "image" && (
-            <motion.div
-              key="image"
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 8 }}
-              className="flex flex-col gap-4"
-            >
-              {/* Image grid */}
+          {mode === "upload" && (
+            <motion.div key="upload" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              {/* Image thumbnails */}
               {images.length > 0 && (
-                <div className="grid grid-cols-3 gap-2">
-                  {images.map((img) => (
-                    <div
-                      key={img.id}
-                      className="relative rounded-xl overflow-hidden border aspect-square"
-                      style={{ borderColor: "var(--border)" }}
-                    >
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  {images.map(img => (
+                    <div key={img.id} className="relative aspect-square rounded-2xl overflow-hidden border" style={{ borderColor: "var(--border)" }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={img.preview}
-                        alt="Selected"
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        onClick={() => removeImage(img.id)}
-                        className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center bg-black/60 text-white hover:bg-black/80 transition-all"
-                      >
+                      <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                      <button onClick={() => setImages(prev => prev.filter(i => i.id !== img.id))}
+                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center">
                         <X size={12} />
                       </button>
                     </div>
                   ))}
-
-                  {/* Add more button */}
                   {images.length < MAX_IMAGES && (
-                    <button
-                      onClick={() => imageInputRef.current?.click()}
-                      className="aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 transition-all active:scale-95"
-                      style={{
-                        borderColor: "var(--border)",
-                        color: "var(--muted-foreground)",
-                        background: "var(--card)",
-                      }}
-                    >
-                      <Plus size={20} />
-                      <span className="text-xs font-medium">Add</span>
+                    <button onClick={() => imageInputRef.current?.click()}
+                      className="aspect-square rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-1 transition-all active:scale-95"
+                      style={{ borderColor: "var(--violet-200)", color: "var(--violet-600)", background: "var(--violet-tint)" }}>
+                      <Plus size={20} strokeWidth={2.2} />
+                      <span className="text-xs font-semibold">Add</span>
                     </button>
                   )}
                 </div>
               )}
 
-              {/* Drop zone (shown when no images yet) */}
-              {images.length === 0 && (
-                <div
-                  className="border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all"
-                  style={{ borderColor: "var(--border)", background: "var(--card)" }}
-                  onClick={() => imageInputRef.current?.click()}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    if (e.dataTransfer.files.length > 0) {
-                      handleImageFiles(e.dataTransfer.files);
-                    }
-                  }}
-                >
-                  <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                    style={{ background: "var(--muted)" }}
-                  >
-                    <Upload size={24} style={{ color: "var(--primary)" }} />
-                  </div>
-                  <div className="text-center">
-                    <p className="font-semibold text-sm mb-1" style={{ color: "var(--foreground)" }}>
-                      Tap to add photos
-                    </p>
-                    <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-                      Add up to {MAX_IMAGES} photos — both sides, multiple pages, etc.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Action buttons */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => imageInputRef.current?.click()}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold border transition-all active:scale-95"
-                  style={{
-                    background: "var(--card)",
-                    borderColor: "var(--border)",
-                    color: "var(--foreground)",
-                  }}
-                >
-                  <FilePlus size={16} />
-                  {images.length > 0 ? "Add more" : "Choose photos"}
-                </button>
-                <button
-                  onClick={() => cameraInputRef.current?.click()}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold border transition-all active:scale-95"
-                  style={{
-                    background: "var(--card)",
-                    borderColor: "var(--border)",
-                    color: "var(--foreground)",
-                  }}
-                >
-                  <Camera size={16} />
-                  Camera
-                </button>
-              </div>
-
-              {images.length > 0 && (
-                <p className="text-xs text-center" style={{ color: "var(--muted-foreground)" }}>
-                  {images.length} of {MAX_IMAGES} photos added. Make sure text is clear and not cut off.
-                </p>
-              )}
-
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/webp"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  if (e.target.files) handleImageFiles(e.target.files);
-                  e.target.value = "";
-                }}
-              />
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={(e) => {
-                  if (e.target.files) handleImageFiles(e.target.files);
-                  e.target.value = "";
-                }}
-              />
-            </motion.div>
-          )}
-
-          {/* === FILE MODE === */}
-          {mode === "file" && (
-            <motion.div
-              key="file"
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 8 }}
-              className="flex flex-col gap-4"
-            >
-              {selectedFile ? (
-                <div
-                  className="rounded-2xl p-4 border flex items-center gap-4"
-                  style={{
-                    background: "var(--card)",
-                    borderColor: "var(--border)",
-                  }}
-                >
-                  <div
-                    className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: "var(--muted)" }}
-                  >
-                    {fileTypeIcon(selectedFile.type)}
+              {/* Doc file selected */}
+              {docFile && (
+                <div className="rounded-2xl p-4 border flex items-center gap-3 mb-3"
+                  style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: "var(--violet-tint)" }}>
+                    <FileText size={22} style={{ color: "var(--violet-600)" }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p
-                      className="text-sm font-semibold truncate"
-                      style={{ color: "var(--foreground)" }}
-                    >
-                      {selectedFile.name}
-                    </p>
-                    <p
-                      className="text-xs mt-0.5"
-                      style={{ color: "var(--muted-foreground)" }}
-                    >
-                      {selectedFile.type.toUpperCase()} · {formatFileSize(selectedFile.size)}
-                    </p>
-                    {selectedFile.type === "pdf" && (
-                      <p className="text-xs mt-1 text-amber-600">
-                        Pages will be converted to images for analysis.
-                      </p>
-                    )}
-                    {(selectedFile.type === "docx" || selectedFile.type === "doc") && (
-                      <p className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>
-                        Text will be extracted for analysis.
-                      </p>
-                    )}
+                    <p className="text-sm font-semibold truncate" style={{ color: "var(--ink)" }}>{docFile.name}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>{docFile.type.toUpperCase()} · {formatFileSize(docFile.size)}</p>
                   </div>
-                  <button
-                    onClick={() => setSelectedFile(null)}
-                    className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-all"
-                    style={{ color: "var(--muted-foreground)" }}
-                  >
-                    <X size={18} />
+                  <button onClick={() => setDocFile(null)} className="w-8 h-8 flex items-center justify-center rounded-lg" style={{ color: "var(--muted)" }}>
+                    <X size={16} />
                   </button>
                 </div>
-              ) : (
+              )}
+
+              {/* Dropzone (no content yet) */}
+              {images.length === 0 && !docFile && (
                 <div
-                  className="border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all"
-                  style={{ borderColor: "var(--border)", background: "var(--card)" }}
-                  onClick={() => fileInputRef.current?.click()}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const file = e.dataTransfer.files[0];
-                    if (file) handleDocFile(file);
+                  className="rounded-2xl p-7 flex flex-col items-center gap-4 border-2 border-dashed mb-3"
+                  style={{
+                    background: "linear-gradient(135deg, #F3EDFD, #FFF1EC)",
+                    borderColor: "var(--violet-200)",
                   }}
                 >
                   <div
                     className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                    style={{ background: "var(--muted)" }}
+                    style={{ background: "var(--brand-gradient)", boxShadow: "var(--brand-glow)" }}
                   >
-                    <FileText size={24} style={{ color: "var(--primary)" }} />
+                    <Camera size={24} className="text-white" strokeWidth={2.2} />
                   </div>
                   <div className="text-center">
-                    <p className="font-semibold text-sm mb-1" style={{ color: "var(--foreground)" }}>
-                      Upload a document
+                    <p className="font-semibold text-sm" style={{ color: "var(--ink)" }}>
+                      Take a <span style={{ color: "var(--coral-500)" }}>photo</span>
                     </p>
-                    <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-                      PDF, DOCX, or DOC · Max 25MB
-                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>or drop a screenshot here</p>
                   </div>
+                  <div className="flex gap-2 w-full">
+                    <button onClick={() => cameraInputRef.current?.click()}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold text-white transition-all active:scale-95"
+                      style={{ background: "var(--ink)" }}>
+                      <Camera size={16} strokeWidth={2.2} /> Camera
+                    </button>
+                    <button onClick={() => imageInputRef.current?.click()}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold transition-all active:scale-95 border"
+                      style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--ink)" }}>
+                      <ImageIcon size={16} strokeWidth={2} /> Gallery
+                    </button>
+                  </div>
+                  <button onClick={() => fileInputRef.current?.click()}
+                    className="w-full py-2.5 rounded-xl text-xs font-semibold border transition-all active:scale-95"
+                    style={{ borderColor: "var(--violet-200)", color: "var(--violet-700)", background: "transparent" }}>
+                    Or upload PDF / DOCX
+                  </button>
                 </div>
               )}
 
-              {!selectedFile && (
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold border transition-all active:scale-95"
-                  style={{
-                    background: "var(--card)",
-                    borderColor: "var(--border)",
-                    color: "var(--foreground)",
-                  }}
-                >
-                  <Upload size={16} />
-                  Choose file
-                </button>
+              {(images.length > 0 || docFile) && (
+                <div className="flex gap-2 mb-1">
+                  <button onClick={() => imageInputRef.current?.click()}
+                    className="flex-1 py-3 rounded-xl text-sm font-semibold border transition-all active:scale-95"
+                    style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--ink)" }}>
+                    + Add more photos
+                  </button>
+                  <button onClick={() => cameraInputRef.current?.click()}
+                    className="flex-1 py-3 rounded-xl text-sm font-semibold text-white transition-all active:scale-95"
+                    style={{ background: "var(--ink)" }}>
+                    <Camera size={14} className="inline mr-1" /> Camera
+                  </button>
+                </div>
               )}
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleDocFile(file);
-                  e.target.value = "";
-                }}
-              />
             </motion.div>
           )}
 
-          {/* === TEXT MODE === */}
           {mode === "text" && (
-            <motion.div
-              key="text"
-              initial={{ opacity: 0, x: 8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -8 }}
-              className="flex flex-col gap-2"
-            >
+            <motion.div key="text" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <textarea
                 value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="Paste the confusing message, letter, bill, or error here…"
-                className="w-full rounded-2xl p-4 text-sm resize-none min-h-[200px] border outline-none transition-all"
-                style={{
-                  background: "var(--card)",
-                  borderColor: "var(--border)",
-                  color: "var(--foreground)",
-                  lineHeight: "1.6",
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = "var(--primary)";
-                  e.target.style.boxShadow = "0 0 0 3px rgb(99 102 241 / 0.15)";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = "var(--border)";
-                  e.target.style.boxShadow = "";
-                }}
+                onChange={e => setText(e.target.value)}
+                placeholder="Paste a message, email, or bill text…"
+                className="w-full rounded-2xl p-4 text-sm resize-none min-h-[180px] border outline-none transition-all"
+                style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--ink)", lineHeight: "1.6" }}
+                onFocus={e => { e.target.style.borderColor = "var(--violet-600)"; e.target.style.boxShadow = "0 0 0 3px rgba(108,60,224,.12)"; }}
+                onBlur={e => { e.target.style.borderColor = "var(--border)"; e.target.style.boxShadow = ""; }}
               />
-              <p className="text-xs text-right" style={{ color: "var(--muted-foreground)" }}>
-                {text.length} characters
-              </p>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Additional context box — shown when there's primary input */}
+        {/* Mode toggle */}
+        <div className="flex rounded-2xl p-1 gap-1" style={{ background: "var(--surface-2)" }}>
+          <button onClick={() => setMode("upload")}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold transition-all"
+            style={mode === "upload" ? { background: "var(--surface)", color: "var(--violet-600)", boxShadow: "var(--shadow-sm)" } : { color: "var(--muted)" }}>
+            <Camera size={15} strokeWidth={2} /> Photo / File
+          </button>
+          <button onClick={() => setMode("text")}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold transition-all"
+            style={mode === "text" ? { background: "var(--surface)", color: "var(--violet-600)", boxShadow: "var(--shadow-sm)" } : { color: "var(--muted)" }}>
+            <span className="text-base leading-none">T</span> Paste text
+          </button>
+        </div>
+
+        {/* Additional context */}
         <AnimatePresence>
-          {showContextBox && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="flex flex-col gap-2"
-            >
-              <label
-                className="flex items-center gap-2 text-sm font-semibold"
-                style={{ color: "var(--foreground)" }}
-              >
-                <MessageSquarePlus size={16} style={{ color: "var(--primary)" }} />
-                Additional details
-                <span className="text-xs font-normal" style={{ color: "var(--muted-foreground)" }}>
-                  (optional)
-                </span>
+          {hasInput && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
+              <label className="block text-xs font-bold uppercase tracking-widest mb-2" style={{ color: "var(--muted)", letterSpacing: "0.1em" }}>
+                Additional details <span className="font-normal normal-case tracking-normal opacity-70">(optional)</span>
               </label>
               <textarea
                 value={additionalContext}
-                onChange={(e) => setAdditionalContext(e.target.value)}
-                placeholder="Add any extra context that might help — e.g. 'I've never seen this company before' or 'This is for my elderly mother' or 'I already made a payment last week'…"
-                className="w-full rounded-2xl p-4 text-sm resize-none min-h-[100px] border outline-none transition-all"
-                style={{
-                  background: "var(--card)",
-                  borderColor: "var(--border)",
-                  color: "var(--foreground)",
-                  lineHeight: "1.6",
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = "var(--primary)";
-                  e.target.style.boxShadow = "0 0 0 3px rgb(99 102 241 / 0.15)";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = "var(--border)";
-                  e.target.style.boxShadow = "";
-                }}
+                onChange={e => setAdditionalContext(e.target.value)}
+                placeholder={`Add context — e.g. "I've never heard of this company" or "I already paid last week"…`}
+                className="w-full rounded-2xl p-4 text-sm resize-none min-h-[90px] border outline-none transition-all"
+                style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--ink)", lineHeight: "1.6" }}
+                onFocus={e => { e.target.style.borderColor = "var(--violet-600)"; e.target.style.boxShadow = "0 0 0 3px rgba(108,60,224,.12)"; }}
+                onBlur={e => { e.target.style.borderColor = "var(--border)"; e.target.style.boxShadow = ""; }}
               />
-              <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-                This helps ClearIt give you a more accurate and personalized explanation.
-              </p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -647,64 +305,57 @@ function AnalyzePage() {
         {/* Error */}
         <AnimatePresence>
           {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="flex items-start gap-3 p-4 rounded-xl border"
-              style={{ background: "#fef2f2", borderColor: "#fca5a5" }}
-            >
-              <AlertCircle size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-700">{error}</p>
+            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className="flex items-start gap-3 p-4 rounded-xl"
+              style={{ background: "var(--u-scam-bg)", border: "1px solid var(--u-scam-dot)" }}>
+              <AlertCircle size={16} style={{ color: "var(--u-scam-text)" }} className="flex-shrink-0 mt-0.5" />
+              <p className="text-sm font-medium" style={{ color: "var(--u-scam-text)" }}>{error}</p>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Processing indicator */}
-        <AnimatePresence>
-          {processingFile && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center justify-center gap-2 py-2"
-              style={{ color: "var(--muted-foreground)" }}
-            >
-              <Loader2 size={16} className="animate-spin" />
-              <span className="text-sm">Processing file…</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {processingFile && (
+          <div className="flex items-center justify-center gap-2 py-1" style={{ color: "var(--muted)" }}>
+            <Loader2 size={15} className="animate-spin" />
+            <span className="text-sm">Processing…</span>
+          </div>
+        )}
 
-        {/* Analyze button */}
+        {/* CTA */}
         <button
           onClick={handleAnalyze}
           disabled={!hasInput || processingFile}
-          className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-base font-semibold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl text-base font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
           style={{
-            background: hasInput && !processingFile
-              ? "linear-gradient(135deg, #3730a3, #6366f1)"
-              : "var(--muted)",
-            color: hasInput && !processingFile ? "white" : "var(--muted-foreground)",
-            boxShadow: hasInput && !processingFile ? "0 4px 20px rgb(99 102 241 / 0.35)" : "none",
+            background: hasInput && !processingFile ? "var(--brand-gradient)" : "var(--surface-2)",
+            color: hasInput && !processingFile ? "white" : "var(--muted)",
+            boxShadow: hasInput && !processingFile ? "var(--brand-glow)" : "none",
+            fontFamily: "var(--font-hanken), sans-serif",
           }}
         >
-          <ScanLine size={20} />
-          Clear this up
+          Explain it
         </button>
 
-        <p className="text-xs text-center" style={{ color: "var(--muted-foreground)" }}>
-          Your content is sent securely and not stored after analysis.
-        </p>
+        {/* Privacy */}
+        <div className="flex items-center justify-center gap-1.5">
+          <Lock size={12} style={{ color: "var(--muted)" }} />
+          <p className="text-xs" style={{ color: "var(--muted)" }}>
+            Private — your photo never leaves your device.
+          </p>
+        </div>
       </div>
+
+      {/* Hidden inputs */}
+      <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden"
+        onChange={e => { if (e.target.files) handleImageFiles(e.target.files); e.target.value = ""; }} />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={e => { if (e.target.files) handleImageFiles(e.target.files); e.target.value = ""; }} />
+      <input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc,application/pdf" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleDocFile(f); e.target.value = ""; }} />
     </AppShell>
   );
 }
 
 export default function AnalyzePageWrapper() {
-  return (
-    <Suspense>
-      <AnalyzePage />
-    </Suspense>
-  );
+  return <Suspense><AnalyzePage /></Suspense>;
 }

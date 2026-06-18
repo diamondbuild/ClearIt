@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, Share2, Check, ShieldCheck } from "lucide-react";
+import { Copy, Share2, Check, Focus } from "lucide-react";
 import { ClearItAnalysis } from "@/lib/types";
 import { urgencyShortLabel } from "@/lib/utils";
 
@@ -13,185 +13,63 @@ interface ClearItCardProps {
 export function ClearItCard({ analysis }: ClearItCardProps) {
   const [copied, setCopied] = useState(false);
 
-  const cardText = `ClearIt Summary
-━━━━━━━━━━━━━━━
-This is:
-${analysis.shareCard.title}
-
-Urgency:
-${urgencyShortLabel(analysis.urgency)}
-
-What it means:
-${analysis.shareCard.meaning}
-
-Next step:
-${analysis.shareCard.nextStep}
-
-━━━━━━━━━━━━━━━
-Explained by ClearIt`;
+  const cardText = `ClearIt Summary\n\nThis is:\n${analysis.shareCard.title}\n\nUrgency: ${urgencyShortLabel(analysis.urgency)}\n\nWhat it means:\n${analysis.shareCard.meaning}\n\nNext step:\n${analysis.shareCard.nextStep}\n\nExplained by ClearIt`;
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(cardText);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // fallback
-    }
+    await navigator.clipboard.writeText(cardText).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleShare = async () => {
     if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "ClearIt Summary",
-          text: cardText,
-        });
-      } catch {
-        handleCopy();
-      }
+      await navigator.share({ title: "ClearIt Summary", text: cardText }).catch(() => handleCopy());
     } else {
       handleCopy();
     }
   };
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden border"
-      style={{
-        borderColor: "var(--border)",
-        boxShadow: "var(--shadow-md)",
-      }}
-    >
+    <div className="rounded-2xl overflow-hidden border" style={{ borderColor: "var(--border)", boxShadow: "var(--shadow-md)" }}>
       {/* Card header */}
-      <div
-        className="px-4 py-3 flex items-center gap-2"
-        style={{ background: "var(--primary)" }}
-      >
-        <ShieldCheck size={16} className="text-white opacity-80" />
-        <span className="text-sm font-semibold text-white">ClearIt Summary</span>
+      <div className="px-4 py-3 flex items-center gap-2" style={{ background: "var(--brand-gradient)" }}>
+        <Focus size={15} className="text-white opacity-80" />
+        <span className="text-sm font-bold text-white">ClearIt Summary</span>
       </div>
 
       {/* Card body */}
-      <div
-        className="px-4 py-4 flex flex-col gap-3"
-        style={{ background: "var(--card)" }}
-      >
-        <div>
-          <p
-            className="text-xs font-semibold uppercase tracking-wider mb-1"
-            style={{ color: "var(--muted-foreground)" }}
-          >
-            This is
-          </p>
-          <p
-            className="text-sm font-semibold leading-snug"
-            style={{ color: "var(--foreground)" }}
-          >
-            {analysis.shareCard.title}
-          </p>
-        </div>
-
-        <div>
-          <p
-            className="text-xs font-semibold uppercase tracking-wider mb-1"
-            style={{ color: "var(--muted-foreground)" }}
-          >
-            Urgency
-          </p>
-          <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
-            {urgencyShortLabel(analysis.urgency)}
-          </p>
-        </div>
-
-        <div>
-          <p
-            className="text-xs font-semibold uppercase tracking-wider mb-1"
-            style={{ color: "var(--muted-foreground)" }}
-          >
-            What it means
-          </p>
-          <p
-            className="text-sm leading-relaxed"
-            style={{ color: "var(--foreground)" }}
-          >
-            {analysis.shareCard.meaning}
-          </p>
-        </div>
-
-        <div>
-          <p
-            className="text-xs font-semibold uppercase tracking-wider mb-1"
-            style={{ color: "var(--muted-foreground)" }}
-          >
-            Next step
-          </p>
-          <p
-            className="text-sm font-medium leading-relaxed"
-            style={{ color: "var(--foreground)" }}
-          >
-            {analysis.shareCard.nextStep}
-          </p>
-        </div>
-
-        <p
-          className="text-xs pt-2 border-t"
-          style={{
-            color: "var(--muted-foreground)",
-            borderColor: "var(--border)",
-          }}
-        >
+      <div className="px-4 py-4 flex flex-col gap-3" style={{ background: "var(--surface)" }}>
+        {[
+          { label: "This is", value: analysis.shareCard.title },
+          { label: "Urgency", value: urgencyShortLabel(analysis.urgency) },
+          { label: "What it means", value: analysis.shareCard.meaning },
+          { label: "Next step", value: analysis.shareCard.nextStep },
+        ].map(({ label, value }) => (
+          <div key={label}>
+            <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: "var(--muted)", letterSpacing: "0.1em" }}>{label}</p>
+            <p className="text-sm font-medium" style={{ color: "var(--ink)" }}>{value}</p>
+          </div>
+        ))}
+        <p className="text-xs pt-2 border-t" style={{ color: "var(--muted)", borderColor: "var(--border)" }}>
           Explained by ClearIt
         </p>
       </div>
 
       {/* Actions */}
-      <div
-        className="px-4 py-3 flex gap-2 border-t"
-        style={{
-          background: "var(--muted)",
-          borderColor: "var(--border)",
-        }}
-      >
-        <button
-          onClick={handleCopy}
+      <div className="px-4 py-3 flex gap-2 border-t" style={{ background: "var(--surface-2)", borderColor: "var(--border)" }}>
+        <button onClick={handleCopy}
           className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-95 border"
-          style={{
-            background: "var(--card)",
-            borderColor: "var(--border)",
-            color: "var(--foreground)",
-          }}
-        >
+          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--ink)" }}>
           <AnimatePresence mode="wait">
-            {copied ? (
-              <motion.span
-                key="check"
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0 }}
-                className="flex items-center gap-2 text-emerald-600"
-              >
-                <Check size={16} />
-                Copied!
-              </motion.span>
-            ) : (
-              <motion.span
-                key="copy"
-                className="flex items-center gap-2"
-              >
-                <Copy size={16} />
-                Copy
-              </motion.span>
-            )}
+            {copied
+              ? <motion.span key="c" initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex items-center gap-2" style={{ color: "var(--u-low-dot)" }}><Check size={15} /> Copied!</motion.span>
+              : <motion.span key="u" className="flex items-center gap-2"><Copy size={15} /> Copy</motion.span>}
           </AnimatePresence>
         </button>
-        <button
-          onClick={handleShare}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-95 text-white"
-          style={{ background: "var(--primary)" }}
-        >
-          <Share2 size={16} />
-          Share
+        <button onClick={handleShare}
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white transition-all active:scale-95"
+          style={{ background: "var(--brand-gradient)" }}>
+          <Share2 size={15} /> Share
         </button>
       </div>
     </div>

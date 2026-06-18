@@ -131,17 +131,21 @@ export default function HomePage() {
           <br />Point and get a plain answer.
         </p>
 
-        {/* Chips — each pre-fills a specific text hint */}
+        {/* Chips — decorative example labels, not buttons */}
         <div className="flex gap-2 overflow-x-auto mt-3 pb-0.5 w-full" style={{ scrollbarWidth: "none" }}>
           {chips.map(chip => (
-            <button
+            <span
               key={chip.label}
-              onClick={() => router.push(`/analyze?mode=text&hint=${encodeURIComponent(chip.hint)}`)}
-              className="flex-shrink-0 px-3.5 py-2 rounded-full text-sm font-medium text-white transition-all active:scale-95 whitespace-nowrap"
-              style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.12)" }}
+              className="flex-shrink-0 px-3.5 py-2 rounded-full text-sm font-medium whitespace-nowrap select-none"
+              style={{
+                background: "rgba(255,255,255,.07)",
+                border: "1px solid rgba(255,255,255,.1)",
+                color: "rgba(255,255,255,.55)",
+                cursor: "default",
+              }}
             >
               {chip.label}
-            </button>
+            </span>
           ))}
         </div>
       </div>

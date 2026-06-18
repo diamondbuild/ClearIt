@@ -29,6 +29,14 @@ function ResultPage() {
         setAnalysis(parsed.analysis);
         setTextSnippet(parsed.textSnippet);
         setUsedImage(parsed.usedImage);
+        // Auto-save every new result to history
+        if (!fromHistory) {
+          saveToHistory(parsed.analysis, {
+            textSnippet: parsed.textSnippet,
+            usedImage: parsed.usedImage,
+          });
+          setIsSaved(true);
+        }
         return;
       } catch { /* fall through */ }
     }
@@ -41,7 +49,7 @@ function ResultPage() {
       return;
     }
     setNotFound(true);
-  }, [id]);
+  }, [id, fromHistory]);
 
   const handleSave = () => {
     if (!analysis) return;
@@ -90,7 +98,6 @@ function ResultPage() {
     >
       <ResultCard
         analysis={analysis}
-        onSave={!isSaved ? handleSave : undefined}
         isSaved={isSaved}
         onAnalyzeAnother={() => router.push("/analyze")}
       />

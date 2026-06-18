@@ -65,7 +65,7 @@ export default function HomePage() {
       }}
     >
       {/* ── Header ─────────────────────────────────── */}
-      <div className="flex items-center justify-between px-5 pt-4 flex-shrink-0 safe-top">
+      <div className="flex items-center px-5 pt-4 flex-shrink-0 safe-top">
         <div className="flex items-center gap-2.5">
           <div
             className="w-8 h-8 rounded-[10px] flex items-center justify-center"
@@ -78,13 +78,6 @@ export default function HomePage() {
             ClearIt
           </span>
         </div>
-        <button
-          className="w-9 h-9 rounded-full flex items-center justify-center"
-          style={{ background: "rgba(255,255,255,.1)" }}
-          onClick={() => router.push("/settings")}
-        >
-          <span className="text-white text-sm font-bold">⚙</span>
-        </button>
       </div>
 
       {/* ── Viewfinder ─────────────────────────────── */}

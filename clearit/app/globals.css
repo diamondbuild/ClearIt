@@ -1,0 +1,153 @@
+@import "tailwindcss";
+
+/* ── Design Tokens ─────────────────────────────────────────────────────── */
+:root {
+  /* Brand */
+  --violet-950: #2A1466;
+  --violet-700: #5A2FC9;
+  --violet-600: #6C3CE0;
+  --violet-400: #9C7CF0;
+  --violet-200: #C9B6F2;
+  --violet-50:  #F0E9FC;
+  --coral-700:  #C2541C;
+  --coral-600:  #E0581E;
+  --coral-500:  #FF6A45;
+  --coral-400:  #FF8366;
+  --coral-200:  #FFB39E;
+  --coral-50:   #FFE9E2;
+  --brand-gradient: linear-gradient(135deg, #6C3CE0, #FF6A45);
+  --brand-glow: 0 12px 30px -6px rgba(108,60,224,.6);
+
+  /* Light mode surfaces */
+  --bg:         #FBF8F4;
+  --surface:    #FFFFFF;
+  --surface-2:  #F1EADD;
+  --border:     #E6DECF;
+  --border-2:   #D8CFE6;
+  --disabled:   #C4BBCB;
+  --ink:        #1B1622;
+  --body:       #3D3849;
+  --muted:      #857C92;
+  --violet-tint:#F0E9FC;
+
+  /* Urgency */
+  --u-low-text: #0B7D58;    --u-low-dot:  #0E9F6E;    --u-low-bg:   #E7F6EF;
+  --u-med-text: #946012;    --u-med-dot:  #B7791F;    --u-med-bg:   #FCF3E3;
+  --u-high-text:#C2541C;    --u-high-dot: #E0581E;    --u-high-bg:  #FDEEE4;
+  --u-scam-text:#C42620;    --u-scam-dot: #E0322E;    --u-scam-bg:  #FCE9E7;
+
+  /* Shadows */
+  --shadow-sm:   0 1px 2px rgba(26,22,38,.08);
+  --shadow-md:   0 6px 20px rgba(26,22,38,.10);
+  --shadow-lg:   0 18px 40px rgba(26,22,38,.16);
+  --shadow-hero: 0 10px 30px -12px rgba(26,22,38,.18);
+}
+
+.dark {
+  --bg:        #141019;
+  --surface:   #1E1826;
+  --surface-2: #271F31;
+  --border:    #322940;
+  --border-2:  #322940;
+  --ink:       #F5F0FF;
+  --body:      #C4BBCB;
+  --muted:     #857C92;
+  --violet-tint:#271F31;
+
+  --u-low-text: #22C55E;   --u-low-dot:  #22C55E;   --u-low-bg:   rgba(14,159,110,.15);
+  --u-med-text: #F59E0B;   --u-med-dot:  #F59E0B;   --u-med-bg:   rgba(183,121,31,.15);
+  --u-high-text:#FF6A45;   --u-high-dot: #E0581E;   --u-high-bg:  rgba(224,88,30,.15);
+  --u-scam-text:#FF5450;   --u-scam-dot: #E0322E;   --u-scam-bg:  rgba(224,50,46,.15);
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--ink);
+  --font-sans: var(--font-hanken);
+  --font-display: var(--font-bricolage);
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { height: 100%; -webkit-tap-highlight-color: transparent; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-hanken), 'Hanken Grotesk', system-ui, sans-serif;
+  min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Typography helpers ────────────────────────────────────────────────── */
+.font-display { font-family: var(--font-bricolage), 'Bricolage Grotesque', system-ui, sans-serif; }
+
+/* ── Safe area ─────────────────────────────────────────────────────────── */
+.safe-top    { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.safe-bottom-nav { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── Animations ────────────────────────────────────────────────────────── */
+@keyframes scanpulse {
+  0%, 100% { opacity: .7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+
+@keyframes sweep {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(300%); opacity: 0; }
+}
+
+@keyframes blip {
+  0%, 80%, 100% { transform: scale(1); opacity: .4; }
+  40% { transform: scale(1.4); opacity: 1; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+.animate-scanpulse { animation: scanpulse 3.2s ease-in-out infinite; }
+.animate-sweep     { animation: sweep 2.4s ease-in-out infinite; }
+.animate-blip-1    { animation: blip 1.2s ease-in-out infinite; }
+.animate-blip-2    { animation: blip 1.2s ease-in-out .18s infinite; }
+.animate-blip-3    { animation: blip 1.2s ease-in-out .36s infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-scanpulse,
+  .animate-sweep,
+  .animate-blip-1,
+  .animate-blip-2,
+  .animate-blip-3 { animation: none !important; }
+}
+
+/* ── Toggle ────────────────────────────────────────────────────────────── */
+.toggle-track {
+  width: 46px; height: 27px;
+  border-radius: 9999px;
+  position: relative;
+  transition: background .2s;
+  cursor: pointer;
+}
+.toggle-track.on  { background: var(--brand-gradient); }
+.toggle-track.off { background: var(--border); }
+.toggle-knob {
+  position: absolute;
+  top: 3px; width: 21px; height: 21px;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.25);
+  transition: left .2s;
+}
+.toggle-track.on  .toggle-knob { left: calc(100% - 24px); }
+.toggle-track.off .toggle-knob { left: 3px; }

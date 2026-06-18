@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Image as ImageIcon, ScanLine, Focus, ShieldAlert, Zap, CheckCircle, Info, HelpCircle, Clock } from "lucide-react";
+import { Camera, Image as ImageIcon, Type, Focus, ShieldAlert, Zap, CheckCircle, Info, HelpCircle, Clock } from "lucide-react";
 import { BottomNav } from "@/components/BottomNav";
 import { motion } from "framer-motion";
 import { getHistory } from "@/lib/storage/history";
@@ -256,7 +256,7 @@ export default function HomePage() {
             className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center transition-all active:scale-90"
             style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.12)" }}
           >
-            <ScanLine size={22} className="text-white" strokeWidth={2} />
+            <Type size={22} className="text-white" strokeWidth={2} />
           </button>
           <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,.4)" }}>Paste text</span>
         </div>

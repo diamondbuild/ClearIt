@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { ResultCard } from "@/components/ResultCard";
+import { ShareSheet } from "@/components/ShareSheet";
 import { ClearItAnalysis } from "@/lib/types";
 import { saveToHistory, getHistoryItem } from "@/lib/storage/history";
 
@@ -18,6 +19,7 @@ function ResultPage() {
   const [textSnippet, setTextSnippet] = useState<string | undefined>();
   const [usedImage, setUsedImage] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [showShareSheet, setShowShareSheet] = useState(false);
 
   useEffect(() => {
     if (!id) { setNotFound(true); return; }
@@ -57,14 +59,7 @@ function ResultPage() {
     setIsSaved(true);
   };
 
-  const handleShare = async () => {
-    const text = `ClearIt: ${analysis?.plainTitle}\n\n${analysis?.oneSentenceSummary}\n\nExplained by ClearIt`;
-    if (navigator.share) {
-      await navigator.share({ title: "ClearIt Summary", text }).catch(() => {});
-    } else {
-      await navigator.clipboard.writeText(text).catch(() => {});
-    }
-  };
+  const handleShare = () => setShowShareSheet(true);
 
   if (notFound) return (
     <AppShell title="Result" backHref="/analyze">
@@ -100,7 +95,11 @@ function ResultPage() {
         analysis={analysis}
         isSaved={isSaved}
         onAnalyzeAnother={() => router.push("/analyze")}
+        onShare={handleShare}
       />
+      {showShareSheet && (
+        <ShareSheet analysis={analysis} onClose={() => setShowShareSheet(false)} />
+      )}
     </AppShell>
   );
 }

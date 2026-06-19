@@ -19,6 +19,7 @@ interface ResultCardProps {
   onSave?: () => void;
   isSaved?: boolean;
   onAnalyzeAnother?: () => void;
+  onShare?: () => void;
 }
 
 
@@ -138,7 +139,7 @@ function ChecklistBlock({ items }: { items: string[] }) {
 
 type ActiveTool = "call" | "reply" | "checklist" | "simpler" | "share" | null;
 
-export function ResultCard({ analysis, onSave, isSaved, onAnalyzeAnother }: ResultCardProps) {
+export function ResultCard({ analysis, onSave, isSaved, onAnalyzeAnother, onShare }: ResultCardProps) {
   const [activeTool, setActiveTool] = useState<ActiveTool>(null);
   const router = useRouter();
 
@@ -168,6 +169,10 @@ export function ResultCard({ analysis, onSave, isSaved, onAnalyzeAnother }: Resu
     if (id === "checklist") {
       sessionStorage.setItem("clearit_tool_result", JSON.stringify(analysis));
       router.push("/tool/checklist");
+      return;
+    }
+    if (id === "share") {
+      onShare?.();
       return;
     }
     toggleTool(id);
@@ -300,12 +305,11 @@ export function ResultCard({ analysis, onSave, isSaved, onAnalyzeAnother }: Resu
           ))}
         </div>
 
-        {/* Inline expanded tools (simpler + share only) */}
+        {/* Inline expanded tool: simpler explanation */}
         <AnimatePresence>
-          {activeTool && (
-            <motion.div key={activeTool} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-3">
-              {activeTool === "simpler" && <CopyBlock text={analysis.simplifiedExplanation} label="Simple explanation" />}
-              {activeTool === "share" && <ClearItCard analysis={analysis} />}
+          {activeTool === "simpler" && (
+            <motion.div key="simpler" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-3">
+              <CopyBlock text={analysis.simplifiedExplanation} label="Simple explanation" />
             </motion.div>
           )}
         </AnimatePresence>

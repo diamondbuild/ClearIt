@@ -191,11 +191,21 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
         imageCount: allImages.length,
       };
 
-      // Run GPT-5.5 (primary) and Gemini Flash (cross-check) in parallel
-      const [result, geminiVote] = await Promise.all([
-        analyzeWithClearItEngine(engineInput),
-        getGeminiVote({ images: allImages, imageMediaTypes: allMediaTypes, text: combinedText || undefined }),
-      ]);
+      // Run GPT-5.5 (primary) first, then Groq cross-check in parallel
+      // Groq is text-only, so we pass GPT's own description for image inputs
+      const result = await analyzeWithClearItEngine(engineInput);
+      const geminiVote = await getGeminiVote({
+        images: allImages,
+        imageMediaTypes: allMediaTypes,
+        text: combinedText || undefined,
+        gptSummary: {
+          plainTitle: result.plainTitle,
+          whatThisIs: result.whatThisIs,
+          oneSentenceSummary: result.oneSentenceSummary,
+          category: result.category,
+          urgency: result.urgency,
+        },
+      });
 
       // Merge Gemini's vote into the result
       const merged = mergeWithGeminiVote(result, geminiVote);

@@ -1,67 +1,93 @@
-import { GoogleGenAI } from "@google/genai";
+/**
+ * Cross-check engine — uses Groq (Llama 3.3 70B) as a free second opinion.
+ * Groq uses the OpenAI-compatible API, so no extra SDK needed.
+ * Free tier: https://console.groq.com — no credit card required.
+ *
+ * Since Groq's free models are text-only (no vision), we pass the GPT
+ * analysis summary + original text as context. For image-only inputs,
+ * Groq cross-checks based on GPT's own description of what it saw.
+ */
+
+import OpenAI from "openai";
 
 export interface GeminiVote {
   category: string;
   urgency: string;
   oneSentenceSummary: string;
-  keyWarning: string; // any extra warning Gemini flags that GPT might have missed
+  keyWarning: string;
   confident: boolean;
 }
 
-const GEMINI_PROMPT = `You are a second-opinion AI reviewing a document, image, or message to cross-check another AI's analysis.
+const GROQ_PROMPT = `You are a second-opinion AI cross-checking another AI's document analysis.
 
-Look at the provided content and return ONLY a JSON object with these exact fields:
+Given the content below, return ONLY a JSON object:
 {
   "category": "one of: bill, insurance, medical, bank_alert, possible_scam, school_form, work_hr, legal_notice, government, subscription, app_error, device_error, appliance, parking_ticket, shipping_delivery, tax, mortgage_rent, utility, general_message, meme_image, person_public_figure, product_object, nature_animal, place_landmark, artwork_media, screenshot_ui, unknown",
   "urgency": "one of: low, medium, high, possible_scam, emergency, unknown",
-  "oneSentenceSummary": "your own one-sentence plain English summary of what this is",
-  "keyWarning": "any important warning you see that should be flagged, or empty string if none",
+  "oneSentenceSummary": "your own one-sentence plain English summary",
+  "keyWarning": "any important warning not already mentioned, or empty string",
   "confident": true or false
 }
 
-Return ONLY the JSON. No markdown, no explanation.`;
+Return ONLY valid JSON. No markdown.`;
+
+function getGroqClient(): OpenAI | null {
+  const apiKey = process.env.GROQ_API_KEY?.trim();
+  if (!apiKey) return null;
+  return new OpenAI({
+    apiKey,
+    baseURL: "https://api.groq.com/openai/v1",
+  });
+}
 
 export async function getGeminiVote(input: {
   images?: string[];
   imageMediaTypes?: string[];
   text?: string;
+  // GPT's analysis for context when images can't be passed to text-only models
+  gptSummary?: {
+    plainTitle: string;
+    whatThisIs: string;
+    oneSentenceSummary: string;
+    category: string;
+    urgency: string;
+  };
 }): Promise<GeminiVote | null> {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!apiKey) return null;
+  const groq = getGroqClient();
+  if (!groq) return null;
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    // Build context for Groq — combine original text + GPT's description
+    const contextParts: string[] = [];
 
-    // Build parts array as plain objects typed via the SDK
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const parts: any[] = [];
-
-    // Add images
-    if (input.images?.length) {
-      for (let i = 0; i < Math.min(input.images.length, 4); i++) {
-        parts.push({
-          inlineData: {
-            data: input.images[i],
-            mimeType: input.imageMediaTypes?.[i] ?? "image/jpeg",
-          },
-        });
-      }
-    }
-
-    // Add text
     if (input.text) {
-      parts.push({ text: `Content to analyze:\n\n${input.text.slice(0, 8000)}` });
+      contextParts.push(`Original content:\n${input.text.slice(0, 6000)}`);
     }
 
-    parts.push({ text: GEMINI_PROMPT });
+    if (input.gptSummary) {
+      contextParts.push(
+        `First AI's analysis:\n` +
+        `- Title: ${input.gptSummary.plainTitle}\n` +
+        `- What it is: ${input.gptSummary.whatThisIs.slice(0, 400)}\n` +
+        `- Category: ${input.gptSummary.category}\n` +
+        `- Urgency: ${input.gptSummary.urgency}`
+      );
+    }
 
-    const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
-      contents: [{ role: "user", parts }],
-      config: { maxOutputTokens: 400 },
+    if (input.images?.length && !input.text && !input.gptSummary) {
+      contextParts.push("(Image content — use the first AI's analysis above as context)");
+    }
+
+    const userMessage = contextParts.join("\n\n") + "\n\n" + GROQ_PROMPT;
+
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "user", content: userMessage }],
+      max_tokens: 300,
+      temperature: 0.1,
     });
 
-    const raw = response.text ?? "";
+    const raw = completion.choices[0]?.message?.content ?? "";
     const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "").trim();
     const parsed = JSON.parse(cleaned);
 
@@ -73,26 +99,24 @@ export async function getGeminiVote(input: {
       confident: parsed.confident === true,
     };
   } catch (err) {
-    console.warn("Gemini cross-check failed (non-fatal):", err instanceof Error ? err.message : err);
+    console.warn("Groq cross-check failed (non-fatal):", err instanceof Error ? err.message : err);
     return null;
   }
 }
 
-// Merge GPT result with Gemini vote
 export function mergeWithGeminiVote(
   analysis: import("@/lib/types").ClearItAnalysis,
   vote: GeminiVote | null
 ): import("@/lib/types").ClearItAnalysis & { geminiVerified: boolean; geminiDisagreement?: string } {
-  if (!vote) {
-    return { ...analysis, geminiVerified: false };
-  }
+  if (!vote) return { ...analysis, geminiVerified: false };
 
   const categoryMatch = vote.category === analysis.category;
   const urgencyMatch  = vote.urgency  === analysis.urgency;
   const bothConfident = vote.confident && analysis.confidence !== "low";
 
-  // If Gemini sees a scam and GPT didn't flag it, upgrade urgency
   let upgraded = { ...analysis };
+
+  // Groq spots scam that GPT missed → upgrade
   if (vote.urgency === "possible_scam" && analysis.urgency === "low") {
     upgraded = { ...upgraded, urgency: "possible_scam" };
     if (!upgraded.warnings.some(w => w.includes("scam"))) {
@@ -103,7 +127,7 @@ export function mergeWithGeminiVote(
     }
   }
 
-  // Add Gemini's key warning if it's new and meaningful
+  // Groq adds a new warning
   if (vote.keyWarning && vote.keyWarning.length > 10) {
     if (!upgraded.warnings.some(w => w.toLowerCase().includes(vote.keyWarning.toLowerCase().slice(0, 20)))) {
       upgraded.warnings = [...upgraded.warnings, vote.keyWarning];
@@ -112,12 +136,11 @@ export function mergeWithGeminiVote(
 
   const verified = categoryMatch && urgencyMatch && bothConfident;
   const disagreement = !categoryMatch
-    ? `Category: GPT says "${analysis.category}", Gemini says "${vote.category}"`
+    ? `Category: GPT says "${analysis.category}", Groq says "${vote.category}"`
     : !urgencyMatch
-    ? `Urgency: GPT says "${analysis.urgency}", Gemini says "${vote.urgency}"`
+    ? `Urgency: GPT says "${analysis.urgency}", Groq says "${vote.urgency}"`
     : undefined;
 
-  // Boost confidence when both models agree
   if (verified && upgraded.confidence !== "high") {
     upgraded = { ...upgraded, confidence: "high" };
   }

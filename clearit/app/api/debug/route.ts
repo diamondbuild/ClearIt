@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-import { GoogleGenAI } from "@google/genai";
 
 export async function GET() {
   const results: Record<string, unknown> = {};
@@ -42,23 +41,22 @@ export async function GET() {
     }
   }
 
-  // ── Gemini ──────────────────────────────────────────────────────────────
-  const geminiKey = process.env.GEMINI_API_KEY?.trim();
+  // ── Groq (Llama 3.3 70B) ────────────────────────────────────────────────
+  const groqKey = process.env.GROQ_API_KEY?.trim();
 
-  if (!geminiKey) {
-    results.gemini = { status: "no_key", message: "GEMINI_API_KEY is not set in environment variables" };
+  if (!groqKey) {
+    results.gemini = { status: "no_key", model: "groq/llama-3.3-70b", message: "GROQ_API_KEY is not set in environment variables" };
   } else {
     try {
-      const ai = new GoogleGenAI({ apiKey: geminiKey });
-      const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: [{ role: "user", parts: [{ text: 'Reply with exactly this JSON: {"ok":true}' }] }],
-        config: { maxOutputTokens: 50 },
+      const groq = new OpenAI({ apiKey: groqKey, baseURL: "https://api.groq.com/openai/v1" });
+      const res = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: 'Reply with exactly this JSON: {"ok":true}' }],
+        max_tokens: 50,
       });
-      const text = response.text ?? "";
-      results.gemini = { status: "ok", model: "gemini-1.5-flash", response: text.trim() };
+      results.gemini = { status: "ok", model: "groq/llama-3.3-70b-versatile", response: res.choices[0]?.message?.content };
     } catch (err) {
-      results.gemini = { status: "error", model: "gemini-1.5-flash", error: err instanceof Error ? err.message : String(err) };
+      results.gemini = { status: "error", model: "groq/llama-3.3-70b-versatile", error: err instanceof Error ? err.message : String(err) };
     }
   }
 

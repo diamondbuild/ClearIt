@@ -81,8 +81,8 @@ export default function HomePage() {
       </div>
 
       {/* ── Viewfinder ─────────────────────────────── */}
-      <div className="flex flex-col items-center px-5 pt-3 flex-shrink-0">
-        <div className="relative animate-scanpulse" style={{ width: 172, height: 172 }}>
+      <div className="flex flex-col items-center px-5 pt-2 flex-shrink-0">
+        <div className="relative animate-scanpulse" style={{ width: 148, height: 148 }}>
           {/* Hatch fill */}
           <div className="absolute inset-0 rounded-[30px] overflow-hidden"
             style={{
@@ -115,17 +115,17 @@ export default function HomePage() {
         </div>
 
         {/* Headline */}
-        <h1 className="text-[28px] font-extrabold text-white text-center mt-4 leading-tight"
+        <h1 className="text-[26px] font-extrabold text-white text-center mt-3 leading-tight"
           style={{ fontFamily: "var(--font-bricolage), sans-serif", letterSpacing: "-0.02em" }}>
           What is this?
         </h1>
-        <p className="text-sm text-center mt-1.5 leading-relaxed" style={{ color: "#B7AECB" }}>
+        <p className="text-sm text-center mt-1 leading-snug" style={{ color: "#B7AECB" }}>
           A bill, a meme, a pill, a letter, an error.
-          <br />Point and get a plain answer.
+          Point and get a plain answer.
         </p>
 
         {/* Chips — decorative example labels, not buttons */}
-        <div className="flex gap-2 overflow-x-auto mt-3 pb-0.5 w-full" style={{ scrollbarWidth: "none" }}>
+        <div className="flex gap-2 overflow-x-auto mt-2.5 pb-0.5 w-full" style={{ scrollbarWidth: "none" }}>
           {chips.map(chip => (
             <span
               key={chip.label}
@@ -143,8 +143,9 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ── Recent scans ───────────────────────────── */}
-      <div className="flex-1 flex flex-col justify-center px-5 min-h-0 mt-3">
+      {/* ── Recent scans / examples ────────────────── */}
+      {/* min-h-0 is required so flex-1 can shrink and overflow-y-auto works */}
+      <div className="flex-1 flex flex-col min-h-0 px-5 mt-3 overflow-y-auto pb-2" style={{ scrollbarWidth: "none" }}>
         {recent.length > 0 ? (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
             <div className="flex items-center justify-between mb-2">
@@ -217,8 +218,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Capture controls ───────────────────────── */}
-      {/* Gallery = opens file picker | FAB = opens camera | no third button */}
-      <div className="flex items-center justify-center gap-10 pb-20 pt-3 flex-shrink-0">
+      <div className="flex items-center justify-center gap-10 pb-20 pt-2 flex-shrink-0">
         {/* Gallery — picks an existing photo or file */}
         <div className="flex flex-col items-center gap-1.5">
           <button

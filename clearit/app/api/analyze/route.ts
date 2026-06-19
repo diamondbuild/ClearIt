@@ -139,8 +139,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
     const allMediaTypes: string[] = [];
 
     if (images && images.length > 0) {
-      allImages.push(...images.slice(0, 6));
-      allMediaTypes.push(...(imageMediaTypes ?? images.map(() => "image/jpeg")).slice(0, 6));
+      allImages.push(...images.slice(0, 12));
+      allMediaTypes.push(...(imageMediaTypes ?? images.map(() => "image/jpeg")).slice(0, 12));
     } else if (imageBase64) {
       allImages.push(imageBase64);
       allMediaTypes.push(imageMediaType ?? "image/jpeg");
@@ -170,7 +170,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
       );
     }
 
-    const combinedText = [fileContext, extractedText.slice(0, 12000)]
+    const combinedText = [fileContext, extractedText.slice(0, 100000)]
       .filter(Boolean)
       .join("\n");
 

@@ -127,10 +127,10 @@ export default function HomePage() {
       let text = "";
       try { text = await extractPdfText(file); } catch { text = ""; }
       if (text.trim().length >= 60) {
-        await runAnalysis({ text: text.slice(0, 12000), fileName: file.name });
+        await runAnalysis({ text: text.slice(0, 100000), fileName: file.name });
         return;
       }
-      const pages = await renderPdfToImages(file, 4, 1.4);
+      const pages = await renderPdfToImages(file, 12, 1.4);
       if (pages.length === 0) {
         throw new Error("Couldn't read this PDF. Try a clearer file or paste the text instead.");
       }
@@ -155,7 +155,7 @@ export default function HomePage() {
       if (!text.trim()) {
         throw new Error("That file looks empty. Try another file or paste the text instead.");
       }
-      await runAnalysis({ text: text.slice(0, 12000), fileName: file.name });
+      await runAnalysis({ text: text.slice(0, 100000), fileName: file.name });
       return;
     }
 
@@ -403,8 +403,10 @@ export default function HomePage() {
       </div>
 
       {/* Hidden file inputs */}
+      {/* No `accept` filter on purpose: some mobile pickers gray out PDFs and
+          documents when the list is restrictive. We accept any file and
+          validate the type in handleFiles instead. */}
       <input ref={galleryInputRef} type="file"
-        accept="image/*,application/pdf,.pdf,.doc,.docx,.txt,.md,.csv,.rtf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         multiple className="hidden"
         onChange={e => handleFiles(e.target.files)} />
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"

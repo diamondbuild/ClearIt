@@ -5,12 +5,13 @@ export interface PdfPageImage {
   pageNumber: number;
 }
 
-// Target ~400KB per page as base64 to keep total payload manageable
-const MAX_PAGE_BASE64 = 400 * 1024;
+// Target ~300KB per page as base64 so several pages stay under the
+// serverless request body limit (~4.5MB on Vercel).
+const MAX_PAGE_BASE64 = 300 * 1024;
 
 export async function renderPdfToImages(
   file: File,
-  maxPages = 4,
+  maxPages = 12,
   scale = 1.2
 ): Promise<PdfPageImage[]> {
   const pdfjsLib = await import("pdfjs-dist");
@@ -57,7 +58,8 @@ export async function extractPdfText(file: File): Promise<string> {
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
   const textParts: string[] = [];
-  const totalPages = Math.min(pdf.numPages, 8);
+  // Read essentially the whole document (cap high to avoid pathological PDFs).
+  const totalPages = Math.min(pdf.numPages, 100);
 
   for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
     const page = await pdf.getPage(pageNum);

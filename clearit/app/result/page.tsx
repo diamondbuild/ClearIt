@@ -74,21 +74,29 @@ function ResultPage() {
         } catch { /* fall through */ }
       }
 
-      // 2. Try Supabase (shared link or cross-device)
+      // 2. Try localStorage history (fast, always has local thumbnails)
+      const historyItem = getHistoryItem(id);
+
+      // 3. Try Supabase (cross-device / shared links)
       if (supabaseConfigured) {
         const sbData = await fetchAnalysisById(id);
         if (sbData) {
           setAnalysis(sbData.analysis);
           setTextSnippet(sbData.textSnippet);
           setUsedImage(sbData.usedImage);
-          setThumbnails(sbData.thumbnails);
+          // Use Supabase thumbnails (CDN URLs) if available,
+          // otherwise fall back to localStorage base64 thumbnails
+          setThumbnails(
+            sbData.thumbnails.length > 0
+              ? sbData.thumbnails
+              : historyItem?.thumbnails ?? []
+          );
           setIsSaved(true);
           return;
         }
       }
 
-      // 3. Try localStorage history
-      const historyItem = getHistoryItem(id);
+      // 4. Fully local fallback
       if (historyItem) {
         setAnalysis(historyItem.result);
         setTextSnippet(historyItem.textSnippet);

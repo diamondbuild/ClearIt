@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Copy, Share2, Check, Focus } from "lucide-react";
+import { X, Copy, Share2, Check, Focus, Link } from "lucide-react";
 import { ClearItAnalysis } from "@/lib/types";
-import { categoryLabel, urgencyShortLabel } from "@/lib/utils";
+import { categoryLabel, urgencyShortLabel, encodeSharePayload } from "@/lib/utils";
 import { UrgencyBadge } from "@/components/UrgencyBadge";
 
 interface ShareSheetProps {
@@ -23,71 +23,30 @@ function urgencyBarColor(urgency: string): string {
 
 export function ShareSheet({ analysis, onClose }: ShareSheetProps) {
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
-  // Build plain-text version for clipboard / native share
-  const buildPlainText = (): string => {
-    const lines: string[] = [
-      "━━━━━━━━━━━━━━━━━━━━━━",
-      `  ClearIt — ${categoryLabel(analysis.category)}`,
-      "━━━━━━━━━━━━━━━━━━━━━━",
-      "",
-      analysis.plainTitle,
-      "",
-      `Urgency: ${urgencyShortLabel(analysis.urgency)}`,
-      `Confidence: ${analysis.confidence}`,
-      "",
-      "WHAT IT MEANS",
-      analysis.whatItMeans,
-      "",
-    ];
-
-    if (analysis.nextSteps.length > 0) {
-      lines.push("WHAT TO DO NEXT");
-      analysis.nextSteps.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
-      lines.push("");
-    }
-
-    if (analysis.warnings.length > 0) {
-      lines.push("⚠ WATCH OUT FOR");
-      analysis.warnings.forEach((w) => lines.push(`• ${w}`));
-      lines.push("");
-    }
-
-    if (analysis.keyDetails.length > 0) {
-      lines.push("KEY DETAILS");
-      analysis.keyDetails.forEach((d) => lines.push(`${d.label}: ${d.value}`));
-      lines.push("");
-    }
-
-    if (analysis.detectedDeadlines.length > 0) {
-      lines.push("IMPORTANT DATES");
-      analysis.detectedDeadlines.forEach((dl) =>
-        lines.push(`${dl.label}: ${dl.dateText} — ${dl.explanation}`)
-      );
-      lines.push("");
-    }
-
-    if (analysis.disclaimer) {
-      lines.push(`Note: ${analysis.disclaimer}`);
-      lines.push("");
-    }
-
-    lines.push("Explained by ClearIt");
-    return lines.join("\n");
+  const getShareUrl = (): string => {
+    const encoded = encodeSharePayload(analysis);
+    const base = typeof window !== "undefined" ? window.location.origin : "https://clear-it-eight.vercel.app";
+    return `${base}/share#${encoded}`;
   };
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(buildPlainText()).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+  const handleCopyLink = async () => {
+    await navigator.clipboard.writeText(getShareUrl()).catch(() => {});
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2500);
   };
 
   const handleShare = async () => {
-    const text = buildPlainText();
+    const url = getShareUrl();
     if (navigator.share) {
-      await navigator.share({ title: analysis.plainTitle, text }).catch(() => handleCopy());
+      await navigator.share({
+        title: analysis.plainTitle,
+        text: `${analysis.oneSentenceSummary}\n\nSee the full explanation:`,
+        url,
+      }).catch(() => handleCopyLink());
     } else {
-      handleCopy();
+      handleCopyLink();
     }
   };
 
@@ -252,17 +211,17 @@ export function ShareSheet({ analysis, onClose }: ShareSheetProps) {
           {/* Action buttons — always visible */}
           <div className="flex gap-2 px-5 py-4 flex-shrink-0 safe-bottom"
             style={{ borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
-            <button onClick={handleCopy}
+            <button onClick={handleCopyLink}
               className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold border transition-all active:scale-95"
-              style={{ background: "var(--surface-2)", borderColor: "var(--border)", color: copied ? "var(--u-low-text)" : "var(--ink)" }}>
-              {copied ? <Check size={16} /> : <Copy size={16} />}
-              {copied ? "Copied!" : "Copy"}
+              style={{ background: "var(--surface-2)", borderColor: "var(--border)", color: linkCopied ? "var(--u-low-text)" : "var(--ink)" }}>
+              {linkCopied ? <Check size={16} /> : <Link size={16} />}
+              {linkCopied ? "Copied!" : "Copy link"}
             </button>
             <button onClick={handleShare}
               className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-bold text-white transition-all active:scale-95"
               style={{ background: "var(--brand-gradient)", boxShadow: "var(--brand-glow)" }}>
               <Share2 size={16} />
-              Share
+              Send
             </button>
           </div>
         </motion.div>

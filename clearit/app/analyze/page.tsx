@@ -46,14 +46,42 @@ function AnalyzePage() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-trigger camera or gallery if coming from home screen FAB/gallery button
+  // Restore pre-compressed images passed from home screen gallery/camera buttons
   useEffect(() => {
-    if (action === "camera") {
-      setTimeout(() => cameraInputRef.current?.click(), 300);
-    } else if (action === "gallery") {
-      setTimeout(() => imageInputRef.current?.click(), 300);
+    if (action === "restore") {
+      const stored = sessionStorage.getItem("clearit_home_images");
+      if (stored) {
+        try {
+          // We have base64 images already — jump straight to analyzing
+          const compressed: { base64: string; mediaType: string }[] = JSON.parse(stored);
+          sessionStorage.removeItem("clearit_home_images");
+          setIsAnalyzing(true);
+          const body = {
+            images: compressed.map((c) => c.base64),
+            imageMediaTypes: compressed.map((c) => c.mediaType),
+          };
+          fetch("/api/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          })
+            .then((r) => r.json())
+            .then((data) => {
+              if (!data.success || !data.data) throw new Error(data.error || "Couldn't analyze this.");
+              const analysis = data.data;
+              sessionStorage.setItem(`clearit_pending_${analysis.id}`, JSON.stringify({ analysis, usedImage: true }));
+              router.push(`/result?id=${analysis.id}`);
+            })
+            .catch((err) => {
+              setError(err instanceof Error ? err.message : "Something went wrong.");
+              setIsAnalyzing(false);
+            });
+        } catch {
+          sessionStorage.removeItem("clearit_home_images");
+        }
+      }
     }
-  }, [action]);
+  }, [action, router]);
 
   const hasInput = images.length > 0 || !!docFile || text.trim().length > 10;
 

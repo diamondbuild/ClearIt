@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getHistory } from "@/lib/storage/history";
 import { HistoryItem, Urgency, ClearItAnalysis } from "@/lib/types";
 import { categoryLabel, compressImage, compressImageWithThumb, writeResultToSession } from "@/lib/utils";
+import { extractPdfText, renderPdfToImages } from "@/lib/pdf/pdfUtils";
 import { LoadingAnalysis } from "@/components/LoadingAnalysis";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -96,6 +97,71 @@ export default function HomePage() {
     }
   };
 
+  // Detect a non-image document we know how to read
+  const docKind = (file: File): "pdf" | "docx" | "doc" | "txt" | null => {
+    const name = file.name.toLowerCase();
+    const type = file.type.toLowerCase();
+    if (type === "application/pdf" || name.endsWith(".pdf")) return "pdf";
+    if (name.endsWith(".docx") || type.includes("wordprocessingml")) return "docx";
+    if (name.endsWith(".doc") || type === "application/msword") return "doc";
+    if (type === "text/plain" || /\.(txt|md|csv|rtf|log)$/.test(name)) return "txt";
+    return null;
+  };
+
+  const readFileAsBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.includes(",") ? result.split(",")[1] : result);
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+
+  const handleDocumentFile = async (file: File) => {
+    const kind = docKind(file);
+
+    if (kind === "pdf") {
+      // Prefer real text; fall back to rendering pages as images for scans
+      let text = "";
+      try { text = await extractPdfText(file); } catch { text = ""; }
+      if (text.trim().length >= 60) {
+        await runAnalysis({ text: text.slice(0, 12000), fileName: file.name });
+        return;
+      }
+      const pages = await renderPdfToImages(file, 4, 1.4);
+      if (pages.length === 0) {
+        throw new Error("Couldn't read this PDF. Try a clearer file or paste the text instead.");
+      }
+      await runAnalysis(
+        {
+          images: pages.map(p => p.base64),
+          imageMediaTypes: pages.map(() => "image/jpeg"),
+        },
+        pages.slice(0, 1).map(p => `data:image/jpeg;base64,${p.base64}`),
+      );
+      return;
+    }
+
+    if (kind === "docx" || kind === "doc") {
+      const base64 = await readFileAsBase64(file);
+      await runAnalysis({ docxBase64: base64, fileType: kind, fileName: file.name });
+      return;
+    }
+
+    if (kind === "txt") {
+      const text = await file.text();
+      if (!text.trim()) {
+        throw new Error("That file looks empty. Try another file or paste the text instead.");
+      }
+      await runAnalysis({ text: text.slice(0, 12000), fileName: file.name });
+      return;
+    }
+
+    throw new Error("That file type isn't supported yet. Try a photo, PDF, Word doc, or text file.");
+  };
+
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setIsAnalyzing(true);
@@ -103,13 +169,25 @@ export default function HomePage() {
     try {
       const fileArr = Array.from(files).slice(0, 6);
 
+      // If a document (PDF / Word / text) was chosen, handle it separately
+      const firstDoc = fileArr.find(f => !f.type.startsWith("image/") && docKind(f) !== null);
+      if (firstDoc) {
+        await handleDocumentFile(firstDoc);
+        return;
+      }
+
+      const imageFiles = fileArr.filter(f => f.type.startsWith("image/"));
+      if (imageFiles.length === 0) {
+        throw new Error("That file type isn't supported. Try a photo, PDF, Word doc, or text file.");
+      }
+
       // Run compression and thumbnail generation independently so a
       // thumbnail failure never blocks the analysis
       // Single-pass: compress + thumbnail in one canvas draw per file
       // This is the permanent fix — iOS Safari fails when re-loading
       // a base64 string into a new Image after the first canvas pass.
       const results = await Promise.all(
-        fileArr.map(f => compressImageWithThumb(f).catch(async () => ({
+        imageFiles.map(f => compressImageWithThumb(f).catch(async () => ({
           base64: await compressImage(f),
           thumb: "",
           mediaType: "image/jpeg" as const,
@@ -325,7 +403,9 @@ export default function HomePage() {
       </div>
 
       {/* Hidden file inputs */}
-      <input ref={galleryInputRef} type="file" accept="image/*" multiple className="hidden"
+      <input ref={galleryInputRef} type="file"
+        accept="image/*,application/pdf,.pdf,.doc,.docx,.txt,.md,.csv,.rtf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        multiple className="hidden"
         onChange={e => handleFiles(e.target.files)} />
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
         onChange={e => handleFiles(e.target.files)} />

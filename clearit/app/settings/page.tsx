@@ -117,14 +117,14 @@ export default function SettingsPage() {
           <Section label="About">
             <div className="py-3.5">
               <p className="text-sm leading-relaxed" style={{ color: "var(--muted)" }}>
-                ClearIt explains confusing real-world things in plain English — bills, memes, pills, letters, errors, and more.
+                LetsConfirmIt explains confusing real-world things in plain English — bills, memes, pills, letters, errors, and more.
               </p>
             </div>
           </Section>
 
           {/* Footer */}
           <p className="text-xs text-center" style={{ color: "var(--muted)" }}>
-            ClearIt v2.0 · Explains information.
+            LetsConfirmIt v2.0 · Explains information.
             <br />Not legal, medical, or financial advice.
           </p>
         </div>

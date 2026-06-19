@@ -1,11 +1,11 @@
 {
-  "name": "ClearIt — Take a picture. Know what to do.",
-  "short_name": "ClearIt",
-  "description": "ClearIt explains confusing bills, forms, alerts, errors, and messages in plain English.",
+  "name": "LetsConfirmIt",
+  "short_name": "LetsConfirmIt",
+  "description": "Point at anything confusing. LetsConfirmIt tells you what it is, what it means, and what to do.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f4f6fb",
-  "theme_color": "#3730a3",
+  "background_color": "#FBF8F4",
+  "theme_color": "#6C3CE0",
   "orientation": "portrait",
   "icons": [
     {

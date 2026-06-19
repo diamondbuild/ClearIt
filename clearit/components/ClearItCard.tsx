@@ -13,7 +13,7 @@ interface ClearItCardProps {
 export function ClearItCard({ analysis }: ClearItCardProps) {
   const [copied, setCopied] = useState(false);
 
-  const cardText = `ClearIt Summary\n\nThis is:\n${analysis.shareCard.title}\n\nUrgency: ${urgencyShortLabel(analysis.urgency)}\n\nWhat it means:\n${analysis.shareCard.meaning}\n\nNext step:\n${analysis.shareCard.nextStep}\n\nExplained by ClearIt`;
+  const cardText = `LetsConfirmIt Summary\n\nThis is:\n${analysis.shareCard.title}\n\nUrgency: ${urgencyShortLabel(analysis.urgency)}\n\nWhat it means:\n${analysis.shareCard.meaning}\n\nNext step:\n${analysis.shareCard.nextStep}\n\nExplained by LetsConfirmIt`;
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(cardText).catch(() => {});
@@ -23,7 +23,7 @@ export function ClearItCard({ analysis }: ClearItCardProps) {
 
   const handleShare = async () => {
     if (navigator.share) {
-      await navigator.share({ title: "ClearIt Summary", text: cardText }).catch(() => handleCopy());
+      await navigator.share({ title: "LetsConfirmIt Summary", text: cardText }).catch(() => handleCopy());
     } else {
       handleCopy();
     }
@@ -34,7 +34,7 @@ export function ClearItCard({ analysis }: ClearItCardProps) {
       {/* Card header */}
       <div className="px-4 py-3 flex items-center gap-2" style={{ background: "var(--brand-gradient)" }}>
         <Focus size={15} className="text-white opacity-80" />
-        <span className="text-sm font-bold text-white">ClearIt Summary</span>
+        <span className="text-sm font-bold text-white">LetsConfirmIt Summary</span>
       </div>
 
       {/* Card body */}
@@ -51,7 +51,7 @@ export function ClearItCard({ analysis }: ClearItCardProps) {
           </div>
         ))}
         <p className="text-xs pt-2 border-t" style={{ color: "var(--muted)", borderColor: "var(--border)" }}>
-          Explained by ClearIt
+          Explained by LetsConfirmIt
         </p>
       </div>
 

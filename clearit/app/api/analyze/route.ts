@@ -88,7 +88,7 @@ function classifyAiError(err: unknown): { message: string; status: number; fallb
   ) {
     return {
       message:
-        "ClearIt couldn't read this image clearly. Try a sharper photo with better lighting, or paste the text instead.",
+        "LetsConfirmIt couldn't read this image clearly. Try a sharper photo with better lighting, or paste the text instead.",
       status: 422,
       fallbackToDemo: false,
     };

@@ -36,18 +36,32 @@ Return ONLY a JSON object:
 Return ONLY valid JSON. No markdown.`;
 
 // ── OpenRouter (vision-capable, preferred) ────────────────────────────────────
-function getOpenRouterClient(): OpenAI | null {
+// Use native fetch — the OpenAI SDK strips/rewrites auth headers for non-OpenAI URLs
+async function callOpenRouterRaw(
+  messages: { role: string; content: unknown }[],
+  model = "meta-llama/llama-3.2-90b-vision-instruct"
+): Promise<string | null> {
   const apiKey = process.env.OPENROUTER_API_KEY?.trim();
   if (!apiKey) return null;
-  return new OpenAI({
-    apiKey,
-    baseURL: "https://openrouter.ai/api/v1",
-    defaultHeaders: {
+
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
       "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
       "HTTP-Referer": "https://letsconfirmit.com",
       "X-Title": "LetsConfirmIt",
     },
+    body: JSON.stringify({ model, messages, max_tokens: 350 }),
   });
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`OpenRouter ${res.status}: ${err.slice(0, 200)}`);
+  }
+
+  const data = await res.json();
+  return data?.choices?.[0]?.message?.content ?? null;
 }
 
 // ── Groq (text-only, fallback) ────────────────────────────────────────────────
@@ -69,15 +83,15 @@ export async function getGeminiVote(input: {
     urgency: string;
   };
 }): Promise<GeminiVote | null> {
-  const orClient = getOpenRouterClient();
+  const hasOpenRouter = !!process.env.OPENROUTER_API_KEY?.trim();
   const groqClient = getGroqClient();
 
-  if (!orClient && !groqClient) return null;
+  if (!hasOpenRouter && !groqClient) return null;
 
   // Try OpenRouter first (has vision)
-  if (orClient) {
+  if (hasOpenRouter) {
     try {
-      const result = await callOpenRouter(orClient, input);
+      const result = await callOpenRouter(input);
       if (result) return result;
     } catch (err) {
       console.warn("OpenRouter cross-check failed, trying Groq:", err instanceof Error ? err.message : err);
@@ -97,47 +111,25 @@ export async function getGeminiVote(input: {
 }
 
 async function callOpenRouter(
-  client: OpenAI,
   input: typeof getGeminiVote extends (i: infer I) => unknown ? I : never
 ): Promise<GeminiVote | null> {
-  const hasImages = (input.images?.length ?? 0) > 0;
+  const content: { type: string; text?: string; image_url?: { url: string; detail: string } }[] = [];
 
-  const content: OpenAI.Chat.ChatCompletionContentPart[] = [];
-
-  // Add images (OpenRouter vision models accept image_url with base64)
-  if (hasImages && input.images) {
+  if (input.images?.length) {
     for (let i = 0; i < Math.min(input.images.length, 3); i++) {
-      const mt = (input.imageMediaTypes?.[i] ?? "image/jpeg") as "image/jpeg" | "image/png";
+      const mt = input.imageMediaTypes?.[i] ?? "image/jpeg";
       if (i > 0) content.push({ type: "text", text: `Image ${i + 1}:` });
-      content.push({
-        type: "image_url",
-        image_url: { url: `data:${mt};base64,${input.images[i]}`, detail: "low" },
-      });
+      content.push({ type: "image_url", image_url: { url: `data:${mt};base64,${input.images[i]}`, detail: "low" } });
     }
   }
-
-  // Add text
-  if (input.text) {
-    content.push({ type: "text", text: `Content:\n${input.text.slice(0, 4000)}` });
-  }
-
-  // Add GPT summary as context
+  if (input.text) content.push({ type: "text", text: `Content:\n${input.text.slice(0, 4000)}` });
   if (input.gptSummary) {
-    content.push({
-      type: "text",
-      text: `First AI identified this as: "${input.gptSummary.plainTitle}" (category: ${input.gptSummary.category}, urgency: ${input.gptSummary.urgency})`,
-    });
+    content.push({ type: "text", text: `First AI: "${input.gptSummary.plainTitle}" — category: ${input.gptSummary.category}, urgency: ${input.gptSummary.urgency}` });
   }
-
   content.push({ type: "text", text: CROSS_CHECK_PROMPT });
 
-  const completion = await client.chat.completions.create({
-    model: "meta-llama/llama-3.2-90b-vision-instruct",
-    messages: [{ role: "user", content }],
-    max_tokens: 300,
-  });
-
-  return parseVote(completion.choices[0]?.message?.content ?? "");
+  const raw = await callOpenRouterRaw([{ role: "user", content }]);
+  return raw ? parseVote(raw) : null;
 }
 
 async function callGroq(

@@ -47,14 +47,23 @@ export async function GET() {
 
   if (orKey) {
     try {
-      const or = new OpenAI({ apiKey: orKey, baseURL: "https://openrouter.ai/api/v1",
-        defaultHeaders: { "Authorization": `Bearer ${orKey}`, "HTTP-Referer": "https://letsconfirmit.com", "X-Title": "LetsConfirmIt" } });
-      const res = await or.chat.completions.create({
-        model: "meta-llama/llama-3.2-90b-vision-instruct",
-        messages: [{ role: "user", content: 'Reply with exactly this JSON: {"ok":true}' }],
-        max_tokens: 50,
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${orKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://letsconfirmit.com",
+          "X-Title": "LetsConfirmIt",
+        },
+        body: JSON.stringify({
+          model: "meta-llama/llama-3.2-90b-vision-instruct",
+          messages: [{ role: "user", content: 'Reply with exactly this JSON: {"ok":true}' }],
+          max_tokens: 50,
+        }),
       });
-      results.gemini = { status: "ok", model: "openrouter/llama-3.2-90b-vision", response: res.choices[0]?.message?.content };
+      const data = await res.json();
+      if (!res.ok) throw new Error(JSON.stringify(data));
+      results.gemini = { status: "ok", model: "openrouter/llama-3.2-90b-vision", response: data?.choices?.[0]?.message?.content };
     } catch (err) {
       results.gemini = { status: "error", model: "openrouter/llama-3.2-90b-vision", error: err instanceof Error ? err.message : String(err) };
     }

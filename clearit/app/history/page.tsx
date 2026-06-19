@@ -30,21 +30,24 @@ function urgencyTileColors(urgency: Urgency): { bg: string; color: string } {
 }
 
 function groupByDate(items: HistoryItem[]): { label: string; items: HistoryItem[] }[] {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const now = Date.now();
+  const h24  = now - 24  * 60 * 60 * 1000;
+  const h48  = now - 48  * 60 * 60 * 1000;
+  const day7 = now -  7  * 24 * 60 * 60 * 1000;
 
   const groups: { label: string; items: HistoryItem[] }[] = [
-    { label: "Today", items: [] },
-    { label: "Earlier this week", items: [] },
-    { label: "Older", items: [] },
+    { label: "Today",           items: [] }, // last 24 h
+    { label: "Yesterday",       items: [] }, // 24–48 h
+    { label: "Earlier",         items: [] }, // 48 h – 7 days
+    { label: "Older",           items: [] }, // 7+ days
   ];
 
   for (const item of items) {
-    const d = new Date(item.savedAt);
-    if (d >= today) groups[0].items.push(item);
-    else if (d >= weekAgo) groups[1].items.push(item);
-    else groups[2].items.push(item);
+    const t = new Date(item.savedAt).getTime();
+    if (t >= h24)       groups[0].items.push(item);
+    else if (t >= h48)  groups[1].items.push(item);
+    else if (t >= day7) groups[2].items.push(item);
+    else                groups[3].items.push(item);
   }
 
   return groups.filter(g => g.items.length > 0);

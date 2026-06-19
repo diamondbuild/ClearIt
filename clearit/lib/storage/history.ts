@@ -18,7 +18,7 @@ export function getHistory(): HistoryItem[] {
 
 export function saveToHistory(
   result: ClearItAnalysis,
-  options: { textSnippet?: string; usedImage: boolean }
+  options: { textSnippet?: string; usedImage: boolean; thumbnails?: string[] }
 ): HistoryItem {
   const item: HistoryItem = {
     id: result.id,
@@ -28,6 +28,7 @@ export function saveToHistory(
     plainTitle: result.plainTitle,
     textSnippet: options.textSnippet?.slice(0, 200),
     usedImage: options.usedImage,
+    thumbnails: options.thumbnails?.slice(0, 2), // store max 2 thumbs to limit storage size
     result,
   };
 

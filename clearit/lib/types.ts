@@ -87,6 +87,7 @@ export interface HistoryItem {
   plainTitle: string;
   textSnippet?: string;
   usedImage: boolean;
+  thumbnails?: string[];
   result: ClearItAnalysis;
 }
 

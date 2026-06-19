@@ -215,9 +215,16 @@ export default function HomePage() {
                   }}
                   className="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-left transition-all active:scale-[0.98]"
                   style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "var(--violet-tint)" }}>
-                    <UrgencyIcon u={item.urgency} />
-                  </div>
+                  {item.thumbnails?.[0] ? (
+                    <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 border" style={{ borderColor: "var(--border)" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={item.thumbnails[0]} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "var(--violet-tint)" }}>
+                      <UrgencyIcon u={item.urgency} />
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold truncate" style={{ color: "var(--ink)" }}>{item.plainTitle}</p>
                     <p className="text-xs mt-0.5 flex items-center gap-1.5" style={{ color: "var(--muted)" }}>

@@ -38,6 +38,7 @@ function ResultPage() {
           saveToHistory(parsed.analysis, {
             textSnippet: parsed.textSnippet,
             usedImage: parsed.usedImage,
+            thumbnails: parsed.thumbnails,
           });
           setIsSaved(true);
         }

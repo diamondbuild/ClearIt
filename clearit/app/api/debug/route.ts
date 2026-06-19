@@ -50,7 +50,7 @@ export async function GET() {
     try {
       // Use Node https directly — Next.js fetch patches strip Authorization headers
       const bodyStr = JSON.stringify({
-        model: "meta-llama/llama-3.2-11b-vision-instruct:free",
+        model: "meta-llama/llama-3.2-11b-vision-instruct",
         messages: [{ role: "user", content: 'Reply with exactly this JSON: {"ok":true}' }],
         max_tokens: 50,
       });

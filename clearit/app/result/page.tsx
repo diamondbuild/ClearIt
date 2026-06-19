@@ -41,41 +41,31 @@ function ResultPage() {
           const localThumbs: string[] = parsed.thumbnails ?? [];
           let storedThumbs: string[] = localThumbs;
 
-          // Auto-save to both localStorage and Supabase
+          // Auto-save
           if (!fromHistory) {
-            // LocalStorage (always)
+            // 1. Always save to localStorage immediately (thumbnails as base64)
             saveToHistory(parsed.analysis, {
               textSnippet: parsed.textSnippet,
               usedImage: parsed.usedImage,
               thumbnails: localThumbs,
             });
             setIsSaved(true);
+            setThumbnails(localThumbs); // show immediately
 
-            // Supabase (when configured) — upload thumbnails then save row
-            if (supabaseConfigured && localThumbs.length > 0) {
-              uploadThumbnails(id, localThumbs).then(urls => {
-                storedThumbs = urls.length > 0 ? urls : localThumbs;
-                setThumbnails(storedThumbs);
-                saveAnalysisToSupabase(parsed.analysis, {
+            // 2. Async: upload thumbnails → save to Supabase (non-blocking)
+            if (supabaseConfigured) {
+              const doSupabaseSave = async () => {
+                let thumbnailUrls: string[] = [];
+                if (localThumbs.length > 0) {
+                  thumbnailUrls = await uploadThumbnails(id!, localThumbs).catch(() => []);
+                }
+                await saveAnalysisToSupabase(parsed.analysis, {
                   textSnippet: parsed.textSnippet,
                   usedImage: parsed.usedImage,
-                  thumbnailUrls: urls,
+                  thumbnailUrls,
                 });
-              }).catch(() => {
-                setThumbnails(localThumbs);
-                saveAnalysisToSupabase(parsed.analysis, {
-                  textSnippet: parsed.textSnippet,
-                  usedImage: parsed.usedImage,
-                });
-              });
-            } else if (supabaseConfigured) {
-              saveAnalysisToSupabase(parsed.analysis, {
-                textSnippet: parsed.textSnippet,
-                usedImage: parsed.usedImage,
-              });
-              setThumbnails(localThumbs);
-            } else {
-              setThumbnails(localThumbs);
+              };
+              doSupabaseSave().catch(console.warn);
             }
           } else {
             setThumbnails(localThumbs);

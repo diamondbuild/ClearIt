@@ -72,15 +72,26 @@ export default function HistoryPage() {
   useEffect(() => {
     const load = async () => {
       try {
+        const local = getHistory();
+        const localMap = new Map(local.map(i => [i.id, i]));
+
         if (supabaseConfigured) {
           const cloud = await fetchHistoryFromSupabase(100);
           if (cloud.length > 0) {
-            setHistory(cloud);
+            // Supplement Supabase items with local thumbnails when cloud
+            // thumbnail_urls is empty (upload may still be in progress)
+            const enriched = cloud.map(item => ({
+              ...item,
+              thumbnails: item.thumbnails?.length
+                ? item.thumbnails
+                : localMap.get(item.id)?.thumbnails ?? [],
+            }));
+            setHistory(enriched);
             return;
           }
         }
-        // Fall back to localStorage (always works offline)
-        setHistory(getHistory());
+        // Fall back to localStorage
+        setHistory(local);
       } catch {
         setHistory(getHistory());
       } finally {

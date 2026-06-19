@@ -48,7 +48,7 @@ export async function GET() {
   if (orKey) {
     try {
       const or = new OpenAI({ apiKey: orKey, baseURL: "https://openrouter.ai/api/v1",
-        defaultHeaders: { "HTTP-Referer": "https://letsconfirmit.com", "X-Title": "LetsConfirmIt" } });
+        defaultHeaders: { "Authorization": `Bearer ${orKey}`, "HTTP-Referer": "https://letsconfirmit.com", "X-Title": "LetsConfirmIt" } });
       const res = await or.chat.completions.create({
         model: "meta-llama/llama-3.2-90b-vision-instruct",
         messages: [{ role: "user", content: 'Reply with exactly this JSON: {"ok":true}' }],

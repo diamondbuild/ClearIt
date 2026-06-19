@@ -84,6 +84,28 @@ export function urgencyShortLabel(urgency: Urgency): string {
 // Max ~800KB per image as base64 to stay under Vercel's 4.5MB payload limit
 const MAX_BASE64_BYTES = 800 * 1024;
 
+// Creates a small thumbnail data URL (for display only, not sent to API)
+export async function makeThumbnail(file: File, size = 160): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const { width, height } = img;
+      const ratio = Math.min(size / width, size / height);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(width * ratio);
+      canvas.height = Math.round(height * ratio);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("no canvas"));
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.7));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 export async function compressImage(
   file: File,
   maxWidth = 1280,

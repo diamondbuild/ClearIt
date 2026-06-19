@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Camera, Image as ImageIcon, X, AlertCircle, Loader2, Lock, Plus, FileText } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { LoadingAnalysis } from "@/components/LoadingAnalysis";
-import { compressImage, cn } from "@/lib/utils";
+import { compressImage, makeThumbnail, cn } from "@/lib/utils";
 import { ClearItAnalysis } from "@/lib/types";
 
 const MAX_IMAGES = 6;
@@ -52,8 +52,10 @@ function AnalyzePage() {
       const stored = sessionStorage.getItem("clearit_home_images");
       if (stored) {
         try {
-          // We have base64 images already — jump straight to analyzing
-          const compressed: { base64: string; mediaType: string }[] = JSON.parse(stored);
+          const { compressed, thumbnails: thumbs } = JSON.parse(stored) as {
+            compressed: { base64: string; mediaType: string }[];
+            thumbnails: string[];
+          };
           sessionStorage.removeItem("clearit_home_images");
           setIsAnalyzing(true);
           const body = {
@@ -69,7 +71,9 @@ function AnalyzePage() {
             .then((data) => {
               if (!data.success || !data.data) throw new Error(data.error || "Couldn't analyze this.");
               const analysis = data.data;
-              sessionStorage.setItem(`clearit_pending_${analysis.id}`, JSON.stringify({ analysis, usedImage: true }));
+              sessionStorage.setItem(`clearit_pending_${analysis.id}`, JSON.stringify({
+                analysis, usedImage: true, thumbnails: thumbs ?? [],
+              }));
               router.push(`/result?id=${analysis.id}`);
             })
             .catch((err) => {
@@ -111,12 +115,17 @@ function AnalyzePage() {
     setError(null);
     try {
       let body: Record<string, unknown> = {};
+      let thumbnails: string[] = [];
       if (images.length > 0) {
         setProcessingFile(true);
-        const compressed = await Promise.all(images.map(async img => ({
-          base64: await compressImage(img.file),
-          mediaType: img.file.type === "image/png" ? "image/png" : "image/jpeg",
-        })));
+        const [compressed, thumbs] = await Promise.all([
+          Promise.all(images.map(async img => ({
+            base64: await compressImage(img.file),
+            mediaType: img.file.type === "image/png" ? "image/png" : "image/jpeg",
+          }))),
+          Promise.all(images.slice(0, 4).map(img => makeThumbnail(img.file))),
+        ]);
+        thumbnails = thumbs;
         setProcessingFile(false);
         body = {
           images: compressed.map(c => c.base64),
@@ -160,6 +169,7 @@ function AnalyzePage() {
         analysis,
         textSnippet: mode === "text" ? text.slice(0, 200) : docFile ? `File: ${docFile.name}` : `${images.length} image${images.length > 1 ? "s" : ""}`,
         usedImage: images.length > 0 || (!!docFile && docFile.type === "pdf"),
+        thumbnails: thumbnails.length > 0 ? thumbnails : undefined,
       }));
       router.push(`/result?id=${analysis.id}`);
     } catch (err) {

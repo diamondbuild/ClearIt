@@ -10,7 +10,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { motion } from "framer-motion";
 import { getHistory } from "@/lib/storage/history";
 import { HistoryItem, Urgency } from "@/lib/types";
-import { categoryLabel, compressImage } from "@/lib/utils";
+import { categoryLabel, compressImage, makeThumbnail } from "@/lib/utils";
 
 const chips = [
   { label: "Is this a scam?",    hint: "Is this a scam? Please check for scam signals and advise me." },
@@ -69,13 +69,15 @@ export default function HomePage() {
   const handleHomeFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     try {
-      const compressed = await Promise.all(
-        Array.from(files).slice(0, 6).map(async (file) => ({
+      const fileArr = Array.from(files).slice(0, 6);
+      const [compressed, thumbs] = await Promise.all([
+        Promise.all(fileArr.map(async (file) => ({
           base64: await compressImage(file),
           mediaType: file.type === "image/png" ? "image/png" : "image/jpeg",
-        }))
-      );
-      sessionStorage.setItem("clearit_home_images", JSON.stringify(compressed));
+        }))),
+        Promise.all(fileArr.slice(0, 4).map(f => makeThumbnail(f))),
+      ]);
+      sessionStorage.setItem("clearit_home_images", JSON.stringify({ compressed, thumbnails: thumbs }));
       router.push("/analyze?restore=images");
     } catch { router.push("/analyze"); }
   };

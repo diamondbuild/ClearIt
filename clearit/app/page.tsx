@@ -13,6 +13,7 @@ import { getHistory } from "@/lib/storage/history";
 import { HistoryItem, Urgency, ClearItAnalysis } from "@/lib/types";
 import { categoryLabel, compressImage, compressImageWithThumb, writeResultToSession } from "@/lib/utils";
 import { LoadingAnalysis } from "@/components/LoadingAnalysis";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const examples = [
   { emoji: "🧾", label: "Bills & notices",      hint: "Due dates, amounts, what to do" },
@@ -148,7 +149,7 @@ export default function HomePage() {
       style={{ height: "100dvh", background: "var(--bg)" }}>
 
       {/* ── Header ─────────────────────────── */}
-      <div className="flex items-center px-5 pt-4 flex-shrink-0 safe-top">
+      <div className="flex items-center justify-between px-5 pt-4 flex-shrink-0 safe-top">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-[10px] flex items-center justify-center"
             style={{ background: "var(--brand-gradient)", boxShadow: "var(--brand-glow)" }}>
@@ -159,6 +160,7 @@ export default function HomePage() {
             LetsConfirmIt
           </span>
         </div>
+        <ThemeToggle />
       </div>
 
       {/* ── Viewfinder / text input area ──── */}

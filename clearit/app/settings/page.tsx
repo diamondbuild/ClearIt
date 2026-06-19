@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { ChevronRight, Focus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { clearHistory, getHistory } from "@/lib/storage/history";
+import { useDarkMode } from "@/lib/theme";
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
@@ -14,6 +15,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 }
 
 export default function SettingsPage() {
+  const { dark, set: setDark } = useDarkMode();
   const [readAloud, setReadAloud] = useState(false);
   const [saveHistory, setSaveHistory] = useState(true);
   const [textSize, setTextSize] = useState(50);
@@ -62,6 +64,12 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex flex-col gap-5">
+          {/* Appearance */}
+          <Section label="Appearance">
+            <SettingRow label="Dark mode"
+              right={<Toggle on={dark} onToggle={() => setDark(!dark)} />} />
+          </Section>
+
           {/* Reading */}
           <Section label="Reading">
             <SettingRow label="Text size"

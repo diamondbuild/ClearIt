@@ -234,8 +234,8 @@ export function ResultCard({ analysis, onSave, isSaved, onAnalyzeAnother, onShar
           {/* Divider */}
           <div className="border-t mb-4" style={{ borderColor: "var(--border)" }} />
 
-          {/* Confidence */}
-          <div className="flex items-center gap-3">
+          {/* Confidence + verification */}
+          <div className="flex items-center gap-3 flex-wrap">
             <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--muted)", letterSpacing: "0.1em" }}>
               Confidence
             </span>
@@ -248,7 +248,18 @@ export function ResultCard({ analysis, onSave, isSaved, onAnalyzeAnother, onShar
             <span className="text-xs font-bold" style={{ color: "var(--ink)" }}>
               {analysis.confidence.charAt(0).toUpperCase() + analysis.confidence.slice(1)}
             </span>
+            {analysis.geminiVerified && (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ml-auto"
+                style={{ background: "var(--u-low-bg)", color: "var(--u-low-text)" }}>
+                ✓ Verified by 2 models
+              </span>
+            )}
           </div>
+          {analysis.geminiDisagreement && (
+            <p className="text-xs mt-1" style={{ color: "var(--muted)" }}>
+              Note: {analysis.geminiDisagreement}
+            </p>
+          )}
         </div>
       </div>
 

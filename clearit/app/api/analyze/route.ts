@@ -39,7 +39,7 @@ function classifyAiError(err: unknown): { message: string; status: number; fallb
   ) {
     return {
       message:
-        "The OpenAI API key is missing or invalid. Please add a valid OPENAI_API_KEY in your Vercel environment variables, then redeploy.",
+        "The AI service isn't set up correctly yet. Please add a valid API key in your environment settings, then redeploy.",
       status: 401,
       fallbackToDemo: true,
     };
@@ -58,7 +58,7 @@ function classifyAiError(err: unknown): { message: string; status: number; fallb
   if (msgLower.includes("model") && (msgLower.includes("not found") || msgLower.includes("access"))) {
     return {
       message:
-        "The AI model specified is not available on your OpenAI account. Try setting OPENAI_MODEL=gpt-4o in Vercel and redeploying.",
+        "The selected AI model isn't available. Please check your model setting in your environment configuration and redeploy.",
       status: 400,
       fallbackToDemo: true,
     };

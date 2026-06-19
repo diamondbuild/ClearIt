@@ -224,9 +224,9 @@ export function mergeWithGeminiVote(
 
   const verified = categoryMatch && urgencyMatch && bothConfident;
   const disagreement = !categoryMatch
-    ? `Category: GPT says "${analysis.category}", Groq says "${vote.category}"`
+    ? `Category: Agent One says "${analysis.category}", Agent Two says "${vote.category}"`
     : !urgencyMatch
-    ? `Urgency: GPT says "${analysis.urgency}", Groq says "${vote.urgency}"`
+    ? `Urgency: Agent One says "${analysis.urgency}", Agent Two says "${vote.urgency}"`
     : undefined;
 
   if (verified && upgraded.confidence !== "high") {

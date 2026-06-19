@@ -282,7 +282,7 @@ export function ResultCard({ analysis, onSave, isSaved, onAnalyzeAnother, onShar
             {analysis.geminiVerified && (
               <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ml-auto"
                 style={{ background: "var(--u-low-bg)", color: "var(--u-low-text)" }}>
-                ✓ Verified by 2 models
+                ✓ Verified by 2 agents
               </span>
             )}
           </div>

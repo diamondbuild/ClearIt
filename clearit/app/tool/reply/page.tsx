@@ -63,7 +63,7 @@ export default function DraftReplyPage() {
               <button key={t} onClick={() => setTone(t)}
                 className="px-4 py-2 rounded-full text-sm font-semibold transition-all active:scale-95"
                 style={tone === t
-                  ? { background: "var(--ink)", color: "#fff" }
+                  ? { background: "var(--ink)", color: "var(--bg)" }
                   : { background: "var(--surface)", color: "var(--ink)", border: "1px solid var(--border)" }}>
                 {t}
               </button>

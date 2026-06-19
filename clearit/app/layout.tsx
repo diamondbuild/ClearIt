@@ -38,6 +38,16 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${bricolage.variable} ${hanken.variable} h-full`}>
+      <head>
+        {/* Apply saved text size before first paint — prevents flash */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          try {
+            var s = localStorage.getItem('clearit_text_size');
+            var sizes = { small: '14px', regular: '16px', large: '18px' };
+            if (s && sizes[s]) document.documentElement.style.fontSize = sizes[s];
+          } catch(e) {}
+        `}} />
+      </head>
       <body className="h-full antialiased">{children}</body>
     </html>
   );

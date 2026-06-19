@@ -22,7 +22,23 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setHistoryCount(getHistory().length);
+    // Restore saved text size
+    const saved = localStorage.getItem("clearit_text_size");
+    if (saved === "small") setTextSize(16);
+    else if (saved === "large") setTextSize(84);
+    else setTextSize(50);
   }, []);
+
+  const sizeLabel = textSize < 33 ? "Small" : textSize < 66 ? "Regular" : "Large";
+  const sizePx: Record<string, string> = { small: "14px", regular: "16px", large: "18px" };
+
+  const handleTextSizeChange = (val: number) => {
+    setTextSize(val);
+    const key = val < 33 ? "small" : val < 66 ? "regular" : "large";
+    const px = sizePx[key];
+    document.documentElement.style.fontSize = px;
+    localStorage.setItem("clearit_text_size", key);
+  };
 
   const handleClearHistory = () => {
     clearHistory();
@@ -51,7 +67,7 @@ export default function SettingsPage() {
             <SettingRow label="Text size"
               right={
                 <span className="text-sm font-semibold" style={{ color: "var(--violet-600)" }}>
-                  {textSize < 33 ? "Small" : textSize < 66 ? "Regular" : "Large"}
+                  {sizeLabel}
                 </span>
               }>
               <div className="mt-3 relative">
@@ -59,10 +75,19 @@ export default function SettingsPage() {
                   <div className="absolute left-0 top-0 h-full rounded-full"
                     style={{ width: `${textSize}%`, background: "var(--brand-gradient)" }} />
                   <input type="range" min={0} max={100} value={textSize}
-                    onChange={e => setTextSize(+e.target.value)}
+                    onChange={e => handleTextSizeChange(+e.target.value)}
                     className="absolute inset-0 w-full opacity-0 cursor-pointer h-full" />
                   <div className="absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white shadow-md border pointer-events-none"
                     style={{ left: `calc(${textSize}% - 10px)`, borderColor: "var(--border)" }} />
+                </div>
+                {/* Size labels */}
+                <div className="flex justify-between mt-2">
+                  {["Small", "Regular", "Large"].map(l => (
+                    <span key={l} className="text-xs"
+                      style={{ color: sizeLabel === l ? "var(--violet-600)" : "var(--muted)", fontWeight: sizeLabel === l ? 700 : 400 }}>
+                      {l}
+                    </span>
+                  ))}
                 </div>
               </div>
             </SettingRow>

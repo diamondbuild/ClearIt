@@ -92,7 +92,7 @@ export default function SettingsPage() {
           <Section label="About">
             <div className="py-3.5">
               <p className="text-sm leading-relaxed" style={{ color: "var(--muted)" }}>
-                ClearIt explains confusing real-world things in plain English — bills, memes, pills, letters, errors, and more. Powered by GPT-5.5 with web search.
+                ClearIt explains confusing real-world things in plain English — bills, memes, pills, letters, errors, and more.
               </p>
             </div>
           </Section>

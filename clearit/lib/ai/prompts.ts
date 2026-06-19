@@ -61,8 +61,6 @@ Start by identifying exactly what this is — use web search if needed. Then com
 
 The JSON must have ALL of these fields:
 {
-  "id": "generate a UUID-like string",
-  "createdAt": "ISO timestamp",
   "category": "see allowed values below",
   "urgency": "low | medium | high | possible_scam | emergency | unknown",
   "confidence": "low | medium | high",

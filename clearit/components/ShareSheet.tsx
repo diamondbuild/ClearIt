@@ -26,9 +26,11 @@ export function ShareSheet({ analysis, onClose }: ShareSheetProps) {
   const [linkCopied, setLinkCopied] = useState(false);
 
   const getShareUrl = (): string => {
-    const encoded = encodeSharePayload(analysis);
-    const base = typeof window !== "undefined" ? window.location.origin : "https://clear-it-eight.vercel.app";
-    return `${base}/share#${encoded}`;
+    // Prefer the production domain; fall back to encoded payload for offline/dev
+    const base = typeof window !== "undefined" ? window.location.origin : "https://letsconfirmit.com";
+    // If the analysis has been saved to Supabase, use clean URL
+    // Otherwise fall back to encoded payload URL
+    return `${base}/result?id=${analysis.id}`;
   };
 
   const handleCopyLink = async () => {

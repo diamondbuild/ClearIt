@@ -8,6 +8,8 @@ import { AppShell } from "@/components/AppShell";
 import { UrgencyDot } from "@/components/UrgencyBadge";
 import { HistoryItem, Urgency, Category } from "@/lib/types";
 import { getHistory, deleteHistoryItem } from "@/lib/storage/history";
+import { fetchHistoryFromSupabase, deleteAnalysisFromSupabase } from "@/lib/supabase/db";
+import { supabaseConfigured } from "@/lib/supabase/client";
 import { categoryLabel } from "@/lib/utils";
 
 function urgencyIcon(urgency: Urgency): React.ElementType {
@@ -67,7 +69,17 @@ export default function HistoryPage() {
   const [query, setQuery] = useState("");
   const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => { setHistory(getHistory()); setLoaded(true); }, []);
+  useEffect(() => {
+    const load = async () => {
+      if (supabaseConfigured) {
+        const cloud = await fetchHistoryFromSupabase(100);
+        if (cloud.length > 0) { setHistory(cloud); setLoaded(true); return; }
+      }
+      setHistory(getHistory());
+      setLoaded(true);
+    };
+    load();
+  }, []);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return history;
@@ -89,7 +101,8 @@ export default function HistoryPage() {
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     deleteHistoryItem(id);
-    setHistory(getHistory());
+    if (supabaseConfigured) deleteAnalysisFromSupabase(id);
+    setHistory(prev => prev.filter(h => h.id !== id));
   };
 
   return (

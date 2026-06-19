@@ -194,6 +194,33 @@ export async function compressImage(
   });
 }
 
+/**
+ * Write a result to sessionStorage, preserving the best available thumbnails.
+ * If the existing session entry already has thumbnails (e.g. from the original
+ * scan) and the new item has none (e.g. Supabase hasn't uploaded yet), keep
+ * the existing ones so thumbnails never disappear on re-navigation.
+ */
+export function writeResultToSession(
+  id: string,
+  data: { analysis: import("@/lib/types").ClearItAnalysis; textSnippet?: string; usedImage: boolean; thumbnails?: string[] }
+): void {
+  if (typeof window === "undefined") return;
+  const key = `lci_pending_${id}`;
+  let bestThumbs = data.thumbnails ?? [];
+
+  if (bestThumbs.length === 0) {
+    try {
+      const existing = sessionStorage.getItem(key);
+      if (existing) {
+        const parsed = JSON.parse(existing);
+        if (parsed.thumbnails?.length) bestThumbs = parsed.thumbnails;
+      }
+    } catch { /* ignore */ }
+  }
+
+  sessionStorage.setItem(key, JSON.stringify({ ...data, thumbnails: bestThumbs }));
+}
+
 export function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength).trim() + "…";

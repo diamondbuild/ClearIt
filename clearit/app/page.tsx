@@ -11,7 +11,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { motion, AnimatePresence } from "framer-motion";
 import { getHistory } from "@/lib/storage/history";
 import { HistoryItem, Urgency, ClearItAnalysis } from "@/lib/types";
-import { categoryLabel, compressImage, makeThumbnailFromBase64 } from "@/lib/utils";
+import { categoryLabel, compressImage, compressImageWithThumb } from "@/lib/utils";
 import { LoadingAnalysis } from "@/components/LoadingAnalysis";
 
 const examples = [
@@ -101,26 +101,19 @@ export default function HomePage() {
 
       // Run compression and thumbnail generation independently so a
       // thumbnail failure never blocks the analysis
-      const compressed = await Promise.all(
-        fileArr.map(async f => ({
+      // Single-pass: compress + thumbnail in one canvas draw per file
+      // This is the permanent fix — iOS Safari fails when re-loading
+      // a base64 string into a new Image after the first canvas pass.
+      const results = await Promise.all(
+        fileArr.map(f => compressImageWithThumb(f).catch(async () => ({
           base64: await compressImage(f),
-          mediaType: f.type === "image/png" ? "image/png" : "image/jpeg",
-        }))
+          thumb: "",
+          mediaType: "image/jpeg" as const,
+        })))
       );
 
-      // Build thumbnails from the already-compressed JPEG base64 — this
-      // avoids HEIC/format issues since compressImage already converted to JPEG.
-      // We downscale again to keep thumbnails small for sessionStorage.
-      const thumbs = await Promise.all(
-        compressed.slice(0, 4).map(async ({ base64, mediaType }) => {
-          try {
-            return await makeThumbnailFromBase64(`data:${mediaType};base64,${base64}`);
-          } catch {
-            // Last resort: just use the full base64 with prefix (still works as img src)
-            return `data:${mediaType};base64,${base64}`;
-          }
-        })
-      );
+      const compressed = results.map(r => ({ base64: r.base64, mediaType: r.mediaType }));
+      const thumbs = results.slice(0, 4).map(r => r.thumb).filter(Boolean);
 
       await runAnalysis({
         images: compressed.map(c => c.base64),

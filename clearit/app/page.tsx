@@ -61,7 +61,10 @@ export default function HomePage() {
   const cameraInputRef  = useRef<HTMLInputElement>(null);
   const textareaRef     = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => { setRecent(getHistory().slice(0, 3)); }, []);
+  useEffect(() => {
+    // Always read from localStorage for home screen recents (fast + has thumbnails)
+    setRecent(getHistory().slice(0, 3));
+  }, []);
 
   useEffect(() => {
     if (textMode) setTimeout(() => textareaRef.current?.focus(), 200);

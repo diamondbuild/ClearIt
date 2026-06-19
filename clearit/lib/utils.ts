@@ -84,6 +84,29 @@ export function urgencyShortLabel(urgency: Urgency): string {
 // Max ~800KB per image as base64 to stay under Vercel's 4.5MB payload limit
 const MAX_BASE64_BYTES = 800 * 1024;
 
+// Creates a thumbnail from an existing data URL (already decoded — no HEIC issues)
+export async function makeThumbnailFromBase64(dataUrl: string, size = 200): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const { width, height } = img;
+        if (!width || !height) return reject(new Error("invalid"));
+        const ratio = Math.min(size / width, size / height, 1); // never upscale
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(width * ratio);
+        canvas.height = Math.round(height * ratio);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("no ctx"));
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.75));
+      } catch (e) { reject(e); }
+    };
+    img.onerror = () => reject(new Error("load failed"));
+    img.src = dataUrl;
+  });
+}
+
 // Creates a small thumbnail data URL (for display only, not sent to API)
 export async function makeThumbnail(file: File, size = 160): Promise<string> {
   const url = URL.createObjectURL(file);

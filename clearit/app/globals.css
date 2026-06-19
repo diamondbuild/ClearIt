@@ -43,21 +43,10 @@
   --shadow-hero: 0 10px 30px -12px rgba(26,22,38,.18);
 }
 
-.dark {
+/* Dark class kept for future use but not active by default */
+.dark-disabled {
   --bg:        #141019;
   --surface:   #1E1826;
-  --surface-2: #271F31;
-  --border:    #322940;
-  --border-2:  #322940;
-  --ink:       #F5F0FF;
-  --body:      #C4BBCB;
-  --muted:     #857C92;
-  --violet-tint:#271F31;
-
-  --u-low-text: #22C55E;   --u-low-dot:  #22C55E;   --u-low-bg:   rgba(14,159,110,.15);
-  --u-med-text: #F59E0B;   --u-med-dot:  #F59E0B;   --u-med-bg:   rgba(183,121,31,.15);
-  --u-high-text:#FF6A45;   --u-high-dot: #E0581E;   --u-high-bg:  rgba(224,88,30,.15);
-  --u-scam-text:#FF5450;   --u-scam-dot: #E0322E;   --u-scam-bg:  rgba(224,50,46,.15);
 }
 
 @theme inline {

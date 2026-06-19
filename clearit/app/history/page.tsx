@@ -8,6 +8,7 @@ import { AppShell } from "@/components/AppShell";
 import { UrgencyDot } from "@/components/UrgencyBadge";
 import { HistoryItem, Urgency, Category } from "@/lib/types";
 import { getHistory, deleteHistoryItem } from "@/lib/storage/history";
+import { writeResultToSession } from "@/lib/utils";
 import { fetchHistoryFromSupabase, deleteAnalysisFromSupabase } from "@/lib/supabase/db";
 import { supabaseConfigured } from "@/lib/supabase/client";
 import { categoryLabel } from "@/lib/utils";
@@ -110,7 +111,7 @@ export default function HistoryPage() {
   const groups = useMemo(() => groupByDate(filtered), [filtered]);
 
   const handleOpen = (item: HistoryItem) => {
-    sessionStorage.setItem(`lci_pending_${item.id}`, JSON.stringify({ analysis: item.result, textSnippet: item.textSnippet, usedImage: item.usedImage, thumbnails: item.thumbnails ?? [] }));
+    writeResultToSession(item.id, { analysis: item.result, textSnippet: item.textSnippet, usedImage: item.usedImage, thumbnails: item.thumbnails ?? [] });
     router.push(`/result?id=${item.id}&from=history`);
   };
 

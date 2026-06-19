@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import https from "https";
 
 export async function GET() {
   const results: Record<string, unknown> = {};
@@ -47,23 +48,30 @@ export async function GET() {
 
   if (orKey) {
     try {
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${orKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://letsconfirmit.com",
-          "X-Title": "LetsConfirmIt",
-        },
-        body: JSON.stringify({
-          model: "meta-llama/llama-3.2-90b-vision-instruct",
-          messages: [{ role: "user", content: 'Reply with exactly this JSON: {"ok":true}' }],
-          max_tokens: 50,
-        }),
+      // Use Node https directly — Next.js fetch patches strip Authorization headers
+      const bodyStr = JSON.stringify({
+        model: "meta-llama/llama-3.2-90b-vision-instruct",
+        messages: [{ role: "user", content: 'Reply with exactly this JSON: {"ok":true}' }],
+        max_tokens: 50,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(JSON.stringify(data));
-      results.gemini = { status: "ok", model: "openrouter/llama-3.2-90b-vision", response: data?.choices?.[0]?.message?.content };
+      const orResponse = await new Promise<string>((resolve, reject) => {
+        const req = https.request({
+          hostname: "openrouter.ai", path: "/api/v1/chat/completions", method: "POST",
+          headers: {
+            "Authorization": `Bearer ${orKey}`,
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(bodyStr),
+            "HTTP-Referer": "https://letsconfirmit.com",
+            "X-Title": "LetsConfirmIt",
+          },
+        }, (res) => {
+          let d = ""; res.on("data", c => d += c);
+          res.on("end", () => (res.statusCode ?? 0) >= 400 ? reject(new Error(`${res.statusCode}: ${d.slice(0,200)}`)) : resolve(d));
+        });
+        req.on("error", reject); req.write(bodyStr); req.end();
+      });
+      const orData = JSON.parse(orResponse);
+      results.gemini = { status: "ok", model: "openrouter/llama-3.2-90b-vision", response: orData?.choices?.[0]?.message?.content };
     } catch (err) {
       results.gemini = { status: "error", model: "openrouter/llama-3.2-90b-vision", error: err instanceof Error ? err.message : String(err) };
     }

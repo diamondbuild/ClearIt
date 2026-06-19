@@ -68,8 +68,7 @@ export default function HomePage() {
   }, [textMode]);
 
   const runAnalysis = async (body: Record<string, unknown>, thumbnails: string[] = []) => {
-    setIsAnalyzing(true);
-    setError(null);
+    // caller is responsible for setIsAnalyzing(true) before calling this
     try {
       const bodyStr = JSON.stringify(body);
       const res = await fetch("/api/analyze", {
@@ -95,22 +94,41 @@ export default function HomePage() {
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    const fileArr = Array.from(files).slice(0, 6);
-    const [compressed, thumbs] = await Promise.all([
-      Promise.all(fileArr.map(async f => ({
-        base64: await compressImage(f),
-        mediaType: f.type === "image/png" ? "image/png" : "image/jpeg",
-      }))),
-      Promise.all(fileArr.slice(0, 4).map(f => makeThumbnail(f))),
-    ]);
-    await runAnalysis({
-      images: compressed.map(c => c.base64),
-      imageMediaTypes: compressed.map(c => c.mediaType),
-    }, thumbs);
+    setIsAnalyzing(true);
+    setError(null);
+    try {
+      const fileArr = Array.from(files).slice(0, 6);
+
+      // Run compression and thumbnail generation independently so a
+      // thumbnail failure never blocks the analysis
+      const compressed = await Promise.all(
+        fileArr.map(async f => ({
+          base64: await compressImage(f),
+          mediaType: f.type === "image/png" ? "image/png" : "image/jpeg",
+        }))
+      );
+
+      // Thumbnails are best-effort — fall back to empty on any error
+      const thumbs = await Promise.all(
+        fileArr.slice(0, 4).map(f =>
+          makeThumbnail(f).catch(() => null)
+        )
+      ).then(results => results.filter(Boolean) as string[]);
+
+      await runAnalysis({
+        images: compressed.map(c => c.base64),
+        imageMediaTypes: compressed.map(c => c.mediaType),
+      }, thumbs);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setIsAnalyzing(false);
+    }
   };
 
   const handleTextSubmit = async () => {
     if (!text.trim()) return;
+    setIsAnalyzing(true);
+    setError(null);
     await runAnalysis({ text: text.trim() });
   };
 

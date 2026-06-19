@@ -86,22 +86,28 @@ const MAX_BASE64_BYTES = 800 * 1024;
 
 // Creates a small thumbnail data URL (for display only, not sent to API)
 export async function makeThumbnail(file: File, size = 160): Promise<string> {
+  const url = URL.createObjectURL(file);
   return new Promise((resolve, reject) => {
     const img = new Image();
-    const url = URL.createObjectURL(file);
     img.onload = () => {
-      URL.revokeObjectURL(url);
-      const { width, height } = img;
-      const ratio = Math.min(size / width, size / height);
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(width * ratio);
-      canvas.height = Math.round(height * ratio);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return reject(new Error("no canvas"));
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL("image/jpeg", 0.7));
+      try {
+        const { width, height } = img;
+        if (!width || !height) { URL.revokeObjectURL(url); return reject(new Error("invalid dimensions")); }
+        const ratio = Math.min(size / width, size / height);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(width * ratio);
+        canvas.height = Math.round(height * ratio);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { URL.revokeObjectURL(url); return reject(new Error("no canvas")); }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL("image/jpeg", 0.72));
+      } catch (e) {
+        URL.revokeObjectURL(url);
+        reject(e);
+      }
     };
-    img.onerror = reject;
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("image load failed")); };
     img.src = url;
   });
 }

@@ -14,17 +14,22 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
+function getInitialTheme(): Theme {
+  // The inline script in <head> applies the correct class before hydration,
+  // so we read it back here to keep React state in sync and avoid a flash.
+  if (typeof document !== "undefined") {
+    return document.documentElement.classList.contains("dark")
+      ? "dark"
+      : "light";
+  }
+  return "light";
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const [seniorMode, setSeniorModeState] = useState(false);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem("clearit:theme") as Theme | null;
-    const prefersDark =
-      window.matchMedia &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initial: Theme = stored ?? (prefersDark ? "dark" : "light");
-    setTheme(initial);
     setSeniorModeState(getSettings().seniorMode);
   }, []);
 
@@ -32,7 +37,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const root = document.documentElement;
     if (theme === "dark") root.classList.add("dark");
     else root.classList.remove("dark");
-    window.localStorage.setItem("clearit:theme", theme);
+    try {
+      window.localStorage.setItem("clearit:theme", theme);
+    } catch {
+      // storage unavailable — ignore
+    }
   }, [theme]);
 
   useEffect(() => {

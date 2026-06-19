@@ -73,6 +73,7 @@ export interface ClearItAnalysis {
   keyDetails: KeyDetail[];
   detectedDeadlines: DetectedDeadline[];
   suggestedQuestions: string[];
+  suggestedQA?: { q: string; a: string }[];
   callScript: string;
   replyDraft: string;
   checklist: string[];

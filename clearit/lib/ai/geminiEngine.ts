@@ -13,6 +13,7 @@
  */
 
 import OpenAI from "openai";
+import https from "https";
 
 export interface GeminiVote {
   category: string;
@@ -36,7 +37,8 @@ Return ONLY a JSON object:
 Return ONLY valid JSON. No markdown.`;
 
 // ── OpenRouter (vision-capable, preferred) ────────────────────────────────────
-// Use native fetch — the OpenAI SDK strips/rewrites auth headers for non-OpenAI URLs
+// Uses Node.js https module directly — bypasses Next.js fetch patches that
+// strip Authorization headers on outbound requests.
 async function callOpenRouterRaw(
   messages: { role: string; content: unknown }[],
   model = "meta-llama/llama-3.2-90b-vision-instruct"
@@ -44,24 +46,43 @@ async function callOpenRouterRaw(
   const apiKey = process.env.OPENROUTER_API_KEY?.trim();
   if (!apiKey) return null;
 
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://letsconfirmit.com",
-      "X-Title": "LetsConfirmIt",
-    },
-    body: JSON.stringify({ model, messages, max_tokens: 350 }),
+  const bodyStr = JSON.stringify({ model, messages, max_tokens: 350 });
+
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      {
+        hostname: "openrouter.ai",
+        path: "/api/v1/chat/completions",
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(bodyStr),
+          "HTTP-Referer": "https://letsconfirmit.com",
+          "X-Title": "LetsConfirmIt",
+        },
+      },
+      (res) => {
+        let data = "";
+        res.on("data", (chunk) => { data += chunk; });
+        res.on("end", () => {
+          try {
+            const parsed = JSON.parse(data);
+            if (res.statusCode && res.statusCode >= 400) {
+              reject(new Error(`OpenRouter ${res.statusCode}: ${data.slice(0, 200)}`));
+              return;
+            }
+            resolve(parsed?.choices?.[0]?.message?.content ?? null);
+          } catch {
+            reject(new Error(`OpenRouter parse error: ${data.slice(0, 100)}`));
+          }
+        });
+      }
+    );
+    req.on("error", reject);
+    req.write(bodyStr);
+    req.end();
   });
-
-  if (!res.ok) {
-    const err = await res.text().catch(() => res.statusText);
-    throw new Error(`OpenRouter ${res.status}: ${err.slice(0, 200)}`);
-  }
-
-  const data = await res.json();
-  return data?.choices?.[0]?.message?.content ?? null;
 }
 
 // ── Groq (text-only, fallback) ────────────────────────────────────────────────

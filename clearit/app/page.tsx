@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, Image as ImageIcon, Type, Focus, ShieldAlert, Zap, CheckCircle, Info, HelpCircle, Clock } from "lucide-react";
 import { BottomNav } from "@/components/BottomNav";
 import { motion } from "framer-motion";
 import { getHistory } from "@/lib/storage/history";
 import { HistoryItem, Urgency } from "@/lib/types";
-import { categoryLabel } from "@/lib/utils";
+import { categoryLabel, compressImage } from "@/lib/utils";
 
 // Each chip pre-fills a text hint in the analyze screen
 const chips = [
@@ -51,10 +51,30 @@ function timeAgo(dateStr: string): string {
 export default function HomePage() {
   const router = useRouter();
   const [recent, setRecent] = useState<HistoryItem[]>([]);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setRecent(getHistory().slice(0, 3));
   }, []);
+
+  // Called when user picks files from gallery or camera on home screen.
+  // Compress images, stash in sessionStorage, then navigate to analyze.
+  const handleHomeFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    try {
+      const compressed = await Promise.all(
+        Array.from(files).slice(0, 6).map(async (file) => ({
+          base64: await compressImage(file),
+          mediaType: file.type === "image/png" ? "image/png" : "image/jpeg",
+        }))
+      );
+      sessionStorage.setItem("clearit_home_images", JSON.stringify(compressed));
+      router.push("/analyze?restore=images");
+    } catch {
+      router.push("/analyze");
+    }
+  };
 
   return (
     <div
@@ -219,10 +239,11 @@ export default function HomePage() {
 
       {/* ── Capture controls ───────────────────────── */}
       <div className="flex items-center justify-center gap-10 pb-20 pt-2 flex-shrink-0">
-        {/* Gallery — picks an existing photo or file */}
+
+        {/* Gallery — direct user gesture triggers file picker */}
         <div className="flex flex-col items-center gap-1.5">
           <button
-            onClick={() => router.push("/analyze?action=gallery")}
+            onClick={() => galleryInputRef.current?.click()}
             className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center transition-all active:scale-90"
             style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.12)" }}
           >
@@ -231,10 +252,10 @@ export default function HomePage() {
           <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,.4)" }}>Gallery</span>
         </div>
 
-        {/* Shutter FAB — opens camera */}
+        {/* Camera FAB — capture="environment" opens camera directly on iOS */}
         <div className="flex flex-col items-center gap-1.5">
           <button
-            onClick={() => router.push("/analyze?action=camera")}
+            onClick={() => cameraInputRef.current?.click()}
             className="flex items-center justify-center transition-all active:scale-90"
             style={{
               width: 72, height: 72, borderRadius: "50%",
@@ -259,6 +280,24 @@ export default function HomePage() {
           <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,.4)" }}>Paste text</span>
         </div>
       </div>
+
+      {/* Hidden file inputs — must be in DOM for direct-gesture iOS file picker */}
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => handleHomeFiles(e.target.files)}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => handleHomeFiles(e.target.files)}
+      />
 
       <BottomNav dark />
     </div>

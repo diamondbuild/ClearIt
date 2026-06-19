@@ -58,6 +58,8 @@ export interface ShareCard {
 export interface ClearItAnalysis {
   id: string;
   createdAt: string;
+  geminiVerified?: boolean;
+  geminiDisagreement?: string;
   category: Category;
   urgency: Urgency;
   confidence: Confidence;

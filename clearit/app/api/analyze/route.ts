@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { analyzeWithClearItEngine } from "@/lib/ai/clearitEngine";
+import { getGeminiVote, mergeWithGeminiVote } from "@/lib/ai/geminiEngine";
 import { getRandomDemoResult } from "@/lib/demo/demoResults";
 import { AnalyzeResponse } from "@/lib/types";
 
@@ -182,14 +183,23 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
     }
 
     try {
-      const result = await analyzeWithClearItEngine({
+      const engineInput = {
         images: allImages,
         imageMediaTypes: allMediaTypes,
         text: combinedText || undefined,
         additionalContext: additionalContext?.slice(0, 1000),
         imageCount: allImages.length,
-      });
-      return NextResponse.json({ success: true, data: result });
+      };
+
+      // Run GPT-5.5 (primary) and Gemini Flash (cross-check) in parallel
+      const [result, geminiVote] = await Promise.all([
+        analyzeWithClearItEngine(engineInput),
+        getGeminiVote({ images: allImages, imageMediaTypes: allMediaTypes, text: combinedText || undefined }),
+      ]);
+
+      // Merge Gemini's vote into the result
+      const merged = mergeWithGeminiVote(result, geminiVote);
+      return NextResponse.json({ success: true, data: merged });
     } catch (aiError) {
       // Log full error details for debugging in Vercel logs
       console.error("AI analysis error details:", {

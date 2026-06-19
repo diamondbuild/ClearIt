@@ -56,7 +56,7 @@ export function ShareSheet({ analysis, onClose }: ShareSheetProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-end justify-center"
+        className="fixed inset-0 z-[100] flex items-end justify-center"
         style={{ background: "rgba(0,0,0,.45)" }}
         onClick={onClose}
       >
@@ -209,8 +209,12 @@ export function ShareSheet({ analysis, onClose }: ShareSheetProps) {
           </div>
 
           {/* Action buttons — always visible */}
-          <div className="flex gap-2 px-5 py-4 flex-shrink-0 safe-bottom"
-            style={{ borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
+          <div className="flex gap-2 px-5 pt-4 pb-8 flex-shrink-0"
+            style={{
+              borderTop: "1px solid var(--border)",
+              background: "var(--surface)",
+              paddingBottom: "max(2rem, env(safe-area-inset-bottom, 2rem))",
+            }}>
             <button onClick={handleCopyLink}
               className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold border transition-all active:scale-95"
               style={{ background: "var(--surface-2)", borderColor: "var(--border)", color: linkCopied ? "var(--u-low-text)" : "var(--ink)" }}>

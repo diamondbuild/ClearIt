@@ -1,11 +1,15 @@
 /**
- * Cross-check engine — uses Groq (Llama 3.3 70B) as a free second opinion.
- * Groq uses the OpenAI-compatible API, so no extra SDK needed.
- * Free tier: https://console.groq.com — no credit card required.
+ * Cross-check engine — second opinion using OpenRouter or Groq.
  *
- * Since Groq's free models are text-only (no vision), we pass the GPT
- * analysis summary + original text as context. For image-only inputs,
- * Groq cross-checks based on GPT's own description of what it saw.
+ * Priority:
+ * 1. OpenRouter (OPENROUTER_API_KEY) — uses a vision-capable model so it
+ *    can actually SEE the images, not just read GPT's description.
+ *    Model: meta-llama/llama-3.2-90b-vision-instruct (free tier available)
+ *
+ * 2. Groq (GROQ_API_KEY) — text-only fallback using Llama 3.3 70B.
+ *    Fast and free. Cross-checks based on GPT's summary + original text.
+ *
+ * Both are OpenAI-SDK compatible — no extra packages needed.
  */
 
 import OpenAI from "openai";
@@ -18,33 +22,44 @@ export interface GeminiVote {
   confident: boolean;
 }
 
-const GROQ_PROMPT = `You are a second-opinion AI cross-checking another AI's document analysis.
+const CROSS_CHECK_PROMPT = `You are a second-opinion AI cross-checking another AI's analysis of a document, image, or message.
 
-Given the content below, return ONLY a JSON object:
+Return ONLY a JSON object:
 {
   "category": "one of: bill, insurance, medical, bank_alert, possible_scam, school_form, work_hr, legal_notice, government, subscription, app_error, device_error, appliance, parking_ticket, shipping_delivery, tax, mortgage_rent, utility, general_message, meme_image, person_public_figure, product_object, nature_animal, place_landmark, artwork_media, screenshot_ui, unknown",
   "urgency": "one of: low, medium, high, possible_scam, emergency, unknown",
-  "oneSentenceSummary": "your own one-sentence plain English summary",
-  "keyWarning": "any important warning not already mentioned, or empty string",
+  "oneSentenceSummary": "your own one-sentence plain English summary of what this is",
+  "keyWarning": "any important warning the first AI may have missed, or empty string if none",
   "confident": true or false
 }
 
 Return ONLY valid JSON. No markdown.`;
 
-function getGroqClient(): OpenAI | null {
-  const apiKey = process.env.GROQ_API_KEY?.trim();
+// ── OpenRouter (vision-capable, preferred) ────────────────────────────────────
+function getOpenRouterClient(): OpenAI | null {
+  const apiKey = process.env.OPENROUTER_API_KEY?.trim();
   if (!apiKey) return null;
   return new OpenAI({
     apiKey,
-    baseURL: "https://api.groq.com/openai/v1",
+    baseURL: "https://openrouter.ai/api/v1",
+    defaultHeaders: {
+      "HTTP-Referer": "https://letsconfirmit.com",
+      "X-Title": "LetsConfirmIt",
+    },
   });
+}
+
+// ── Groq (text-only, fallback) ────────────────────────────────────────────────
+function getGroqClient(): OpenAI | null {
+  const apiKey = process.env.GROQ_API_KEY?.trim();
+  if (!apiKey) return null;
+  return new OpenAI({ apiKey, baseURL: "https://api.groq.com/openai/v1" });
 }
 
 export async function getGeminiVote(input: {
   images?: string[];
   imageMediaTypes?: string[];
   text?: string;
-  // GPT's analysis for context when images can't be passed to text-only models
   gptSummary?: {
     plainTitle: string;
     whatThisIs: string;
@@ -53,44 +68,104 @@ export async function getGeminiVote(input: {
     urgency: string;
   };
 }): Promise<GeminiVote | null> {
-  const groq = getGroqClient();
-  if (!groq) return null;
+  const orClient = getOpenRouterClient();
+  const groqClient = getGroqClient();
 
-  try {
-    // Build context for Groq — combine original text + GPT's description
-    const contextParts: string[] = [];
+  if (!orClient && !groqClient) return null;
 
-    if (input.text) {
-      contextParts.push(`Original content:\n${input.text.slice(0, 6000)}`);
+  // Try OpenRouter first (has vision)
+  if (orClient) {
+    try {
+      const result = await callOpenRouter(orClient, input);
+      if (result) return result;
+    } catch (err) {
+      console.warn("OpenRouter cross-check failed, trying Groq:", err instanceof Error ? err.message : err);
     }
+  }
 
-    if (input.gptSummary) {
-      contextParts.push(
-        `First AI's analysis:\n` +
-        `- Title: ${input.gptSummary.plainTitle}\n` +
-        `- What it is: ${input.gptSummary.whatThisIs.slice(0, 400)}\n` +
-        `- Category: ${input.gptSummary.category}\n` +
-        `- Urgency: ${input.gptSummary.urgency}`
-      );
+  // Fall back to Groq (text-only)
+  if (groqClient) {
+    try {
+      return await callGroq(groqClient, input);
+    } catch (err) {
+      console.warn("Groq cross-check failed:", err instanceof Error ? err.message : err);
     }
+  }
 
-    if (input.images?.length && !input.text && !input.gptSummary) {
-      contextParts.push("(Image content — use the first AI's analysis above as context)");
+  return null;
+}
+
+async function callOpenRouter(
+  client: OpenAI,
+  input: typeof getGeminiVote extends (i: infer I) => unknown ? I : never
+): Promise<GeminiVote | null> {
+  const hasImages = (input.images?.length ?? 0) > 0;
+
+  const content: OpenAI.Chat.ChatCompletionContentPart[] = [];
+
+  // Add images (OpenRouter vision models accept image_url with base64)
+  if (hasImages && input.images) {
+    for (let i = 0; i < Math.min(input.images.length, 3); i++) {
+      const mt = (input.imageMediaTypes?.[i] ?? "image/jpeg") as "image/jpeg" | "image/png";
+      if (i > 0) content.push({ type: "text", text: `Image ${i + 1}:` });
+      content.push({
+        type: "image_url",
+        image_url: { url: `data:${mt};base64,${input.images[i]}`, detail: "low" },
+      });
     }
+  }
 
-    const userMessage = contextParts.join("\n\n") + "\n\n" + GROQ_PROMPT;
+  // Add text
+  if (input.text) {
+    content.push({ type: "text", text: `Content:\n${input.text.slice(0, 4000)}` });
+  }
 
-    const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: [{ role: "user", content: userMessage }],
-      max_tokens: 300,
-      temperature: 0.1,
+  // Add GPT summary as context
+  if (input.gptSummary) {
+    content.push({
+      type: "text",
+      text: `First AI identified this as: "${input.gptSummary.plainTitle}" (category: ${input.gptSummary.category}, urgency: ${input.gptSummary.urgency})`,
     });
+  }
 
-    const raw = completion.choices[0]?.message?.content ?? "";
+  content.push({ type: "text", text: CROSS_CHECK_PROMPT });
+
+  const completion = await client.chat.completions.create({
+    model: "meta-llama/llama-3.2-90b-vision-instruct",
+    messages: [{ role: "user", content }],
+    max_tokens: 300,
+  });
+
+  return parseVote(completion.choices[0]?.message?.content ?? "");
+}
+
+async function callGroq(
+  client: OpenAI,
+  input: typeof getGeminiVote extends (i: infer I) => unknown ? I : never
+): Promise<GeminiVote | null> {
+  const parts: string[] = [];
+  if (input.text) parts.push(`Content:\n${input.text.slice(0, 5000)}`);
+  if (input.gptSummary) {
+    parts.push(
+      `First AI's analysis:\n- Title: ${input.gptSummary.plainTitle}\n- What it is: ${input.gptSummary.whatThisIs.slice(0, 300)}\n- Category: ${input.gptSummary.category}\n- Urgency: ${input.gptSummary.urgency}`
+    );
+  }
+  parts.push(CROSS_CHECK_PROMPT);
+
+  const completion = await client.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    messages: [{ role: "user", content: parts.join("\n\n") }],
+    max_tokens: 300,
+    temperature: 0.1,
+  });
+
+  return parseVote(completion.choices[0]?.message?.content ?? "");
+}
+
+function parseVote(raw: string): GeminiVote | null {
+  try {
     const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "").trim();
     const parsed = JSON.parse(cleaned);
-
     return {
       category: parsed.category ?? "unknown",
       urgency: parsed.urgency ?? "unknown",
@@ -98,8 +173,7 @@ export async function getGeminiVote(input: {
       keyWarning: parsed.keyWarning ?? "",
       confident: parsed.confident === true,
     };
-  } catch (err) {
-    console.warn("Groq cross-check failed (non-fatal):", err instanceof Error ? err.message : err);
+  } catch {
     return null;
   }
 }

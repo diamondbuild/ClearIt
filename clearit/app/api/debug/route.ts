@@ -41,12 +41,24 @@ export async function GET() {
     }
   }
 
-  // ── Groq (Llama 3.3 70B) ────────────────────────────────────────────────
+  // ── Cross-check model (OpenRouter preferred, Groq fallback) ─────────────
+  const orKey   = process.env.OPENROUTER_API_KEY?.trim();
   const groqKey = process.env.GROQ_API_KEY?.trim();
 
-  if (!groqKey) {
-    results.gemini = { status: "no_key", model: "groq/llama-3.3-70b", message: "GROQ_API_KEY is not set in environment variables" };
-  } else {
+  if (orKey) {
+    try {
+      const or = new OpenAI({ apiKey: orKey, baseURL: "https://openrouter.ai/api/v1",
+        defaultHeaders: { "HTTP-Referer": "https://letsconfirmit.com", "X-Title": "LetsConfirmIt" } });
+      const res = await or.chat.completions.create({
+        model: "meta-llama/llama-3.2-90b-vision-instruct",
+        messages: [{ role: "user", content: 'Reply with exactly this JSON: {"ok":true}' }],
+        max_tokens: 50,
+      });
+      results.gemini = { status: "ok", model: "openrouter/llama-3.2-90b-vision", response: res.choices[0]?.message?.content };
+    } catch (err) {
+      results.gemini = { status: "error", model: "openrouter/llama-3.2-90b-vision", error: err instanceof Error ? err.message : String(err) };
+    }
+  } else if (groqKey) {
     try {
       const groq = new OpenAI({ apiKey: groqKey, baseURL: "https://api.groq.com/openai/v1" });
       const res = await groq.chat.completions.create({
@@ -54,10 +66,12 @@ export async function GET() {
         messages: [{ role: "user", content: 'Reply with exactly this JSON: {"ok":true}' }],
         max_tokens: 50,
       });
-      results.gemini = { status: "ok", model: "groq/llama-3.3-70b-versatile", response: res.choices[0]?.message?.content };
+      results.gemini = { status: "ok", model: "groq/llama-3.3-70b", response: res.choices[0]?.message?.content };
     } catch (err) {
-      results.gemini = { status: "error", model: "groq/llama-3.3-70b-versatile", error: err instanceof Error ? err.message : String(err) };
+      results.gemini = { status: "error", model: "groq/llama-3.3-70b", error: err instanceof Error ? err.message : String(err) };
     }
+  } else {
+    results.gemini = { status: "no_key", message: "Set OPENROUTER_API_KEY (preferred) or GROQ_API_KEY" };
   }
 
   // ── Summary ─────────────────────────────────────────────────────────────

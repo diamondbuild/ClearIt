@@ -11,7 +11,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { motion, AnimatePresence } from "framer-motion";
 import { getHistory } from "@/lib/storage/history";
 import { HistoryItem, Urgency, ClearItAnalysis } from "@/lib/types";
-import { categoryLabel, compressImage, makeThumbnail } from "@/lib/utils";
+import { categoryLabel, compressImage, makeThumbnailFromBase64 } from "@/lib/utils";
 import { LoadingAnalysis } from "@/components/LoadingAnalysis";
 
 const examples = [
@@ -108,12 +108,19 @@ export default function HomePage() {
         }))
       );
 
-      // Thumbnails are best-effort — fall back to empty on any error
+      // Build thumbnails from the already-compressed JPEG base64 — this
+      // avoids HEIC/format issues since compressImage already converted to JPEG.
+      // We downscale again to keep thumbnails small for sessionStorage.
       const thumbs = await Promise.all(
-        fileArr.slice(0, 4).map(f =>
-          makeThumbnail(f).catch(() => null)
-        )
-      ).then(results => results.filter(Boolean) as string[]);
+        compressed.slice(0, 4).map(async ({ base64, mediaType }) => {
+          try {
+            return await makeThumbnailFromBase64(`data:${mediaType};base64,${base64}`);
+          } catch {
+            // Last resort: just use the full base64 with prefix (still works as img src)
+            return `data:${mediaType};base64,${base64}`;
+          }
+        })
+      );
 
       await runAnalysis({
         images: compressed.map(c => c.base64),

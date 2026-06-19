@@ -29,7 +29,7 @@ function ResultPage() {
 
     const load = async () => {
       // 1. Try sessionStorage first (fresh analysis)
-      const sessionKey = `clearit_pending_${id}`;
+      const sessionKey = `lci_pending_${id}`;
       const sessionData = sessionStorage.getItem(sessionKey);
       if (sessionData) {
         try {

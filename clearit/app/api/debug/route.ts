@@ -51,14 +51,14 @@ export async function GET() {
     try {
       const ai = new GoogleGenAI({ apiKey: geminiKey });
       const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-1.5-flash",
         contents: [{ role: "user", parts: [{ text: 'Reply with exactly this JSON: {"ok":true}' }] }],
         config: { maxOutputTokens: 50 },
       });
       const text = response.text ?? "";
-      results.gemini = { status: "ok", model: "gemini-2.0-flash", response: text.trim() };
+      results.gemini = { status: "ok", model: "gemini-1.5-flash", response: text.trim() };
     } catch (err) {
-      results.gemini = { status: "error", model: "gemini-2.0-flash", error: err instanceof Error ? err.message : String(err) };
+      results.gemini = { status: "error", model: "gemini-1.5-flash", error: err instanceof Error ? err.message : String(err) };
     }
   }
 

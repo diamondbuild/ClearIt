@@ -20,6 +20,7 @@ function ResultPage() {
   const [usedImage, setUsedImage] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
+  const [thumbnails, setThumbnails] = useState<string[]>([]);
 
   useEffect(() => {
     if (!id) { setNotFound(true); return; }
@@ -31,6 +32,7 @@ function ResultPage() {
         setAnalysis(parsed.analysis);
         setTextSnippet(parsed.textSnippet);
         setUsedImage(parsed.usedImage);
+        if (parsed.thumbnails?.length) setThumbnails(parsed.thumbnails);
         // Auto-save every new result to history
         if (!fromHistory) {
           saveToHistory(parsed.analysis, {
@@ -96,6 +98,7 @@ function ResultPage() {
         isSaved={isSaved}
         onAnalyzeAnother={() => router.push("/analyze")}
         onShare={handleShare}
+        thumbnails={thumbnails}
       />
       {showShareSheet && (
         <ShareSheet analysis={analysis} onClose={() => setShowShareSheet(false)} />

@@ -20,6 +20,7 @@ interface ResultCardProps {
   isSaved?: boolean;
   onAnalyzeAnother?: () => void;
   onShare?: () => void;
+  thumbnails?: string[];
 }
 
 
@@ -139,7 +140,7 @@ function ChecklistBlock({ items }: { items: string[] }) {
 
 type ActiveTool = "call" | "reply" | "checklist" | "simpler" | "share" | null;
 
-export function ResultCard({ analysis, onSave, isSaved, onAnalyzeAnother, onShare }: ResultCardProps) {
+export function ResultCard({ analysis, onSave, isSaved, onAnalyzeAnother, onShare, thumbnails = [] }: ResultCardProps) {
   const [activeTool, setActiveTool] = useState<ActiveTool>(null);
   const router = useRouter();
 
@@ -182,6 +183,26 @@ export function ResultCard({ analysis, onSave, isSaved, onAnalyzeAnother, onShar
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-4 px-4 py-4">
+
+      {/* Image thumbnails */}
+      {thumbnails.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
+          {thumbnails.map((src, i) => (
+            <div key={i}
+              className="flex-shrink-0 rounded-2xl overflow-hidden border"
+              style={{
+                width: thumbnails.length === 1 ? "100%" : 110,
+                height: thumbnails.length === 1 ? 200 : 110,
+                borderColor: "var(--border)",
+                boxShadow: "var(--shadow-sm)",
+              }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt={`Image ${i + 1}`}
+                className="w-full h-full object-cover" />
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Hero card */}
       <div className="rounded-[26px] overflow-hidden"

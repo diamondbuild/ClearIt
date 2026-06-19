@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Camera, Image as ImageIcon, Type, Focus,
   ShieldAlert, Zap, CheckCircle, Info, HelpCircle, Clock,
-  X, Loader2, ScanLine,
+  X, Loader2, ScanLine, FileText,
 } from "lucide-react";
 import { BottomNav } from "@/components/BottomNav";
 import { motion, AnimatePresence } from "framer-motion";
@@ -59,9 +59,15 @@ export default function HomePage() {
   const [text, setText] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Review step: hold chosen files + an optional description before analyzing
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingPreviews, setPendingPreviews] = useState<string[]>([]);
+  const [describe, setDescribe] = useState("");
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef  = useRef<HTMLInputElement>(null);
   const textareaRef     = useRef<HTMLTextAreaElement>(null);
+
+  const reviewMode = pendingFiles.length > 0;
 
   useEffect(() => {
     // Always read from localStorage for home screen recents (fast + has thumbnails)
@@ -75,6 +81,9 @@ export default function HomePage() {
   const runAnalysis = async (body: Record<string, unknown>, thumbnails: string[] = []) => {
     // caller is responsible for setIsAnalyzing(true) before calling this
     try {
+      // Attach the user's optional description (from the review step) as context
+      const ctx = describe.trim();
+      if (ctx && !body.additionalContext) body.additionalContext = ctx;
       const bodyStr = JSON.stringify(body);
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -162,12 +171,35 @@ export default function HomePage() {
     throw new Error("That file type isn't supported yet. Try a photo, PDF, Word doc, or text file.");
   };
 
-  const handleFiles = async (files: FileList | null) => {
+  // Step 1: user picks file(s) — show a review screen instead of analyzing now
+  const handleFilesChosen = (files: FileList | null) => {
     if (!files || files.length === 0) return;
+    const arr = Array.from(files).slice(0, 6);
+    // Clean up any previews from a previous selection
+    pendingPreviews.forEach(url => { if (url.startsWith("blob:")) URL.revokeObjectURL(url); });
+    const previews = arr.map(f => (f.type.startsWith("image/") ? URL.createObjectURL(f) : ""));
+    setPendingFiles(arr);
+    setPendingPreviews(previews);
+    setDescribe("");
+    setError(null);
+    setTextMode(false);
+  };
+
+  const cancelReview = () => {
+    pendingPreviews.forEach(url => { if (url.startsWith("blob:")) URL.revokeObjectURL(url); });
+    setPendingFiles([]);
+    setPendingPreviews([]);
+    setDescribe("");
+    setError(null);
+  };
+
+  // Step 2: user confirms — now compress/extract and analyze (with description)
+  const startAnalysis = async () => {
+    if (pendingFiles.length === 0) return;
     setIsAnalyzing(true);
     setError(null);
     try {
-      const fileArr = Array.from(files).slice(0, 6);
+      const fileArr = pendingFiles;
 
       // If a document (PDF / Word / text) was chosen, handle it separately
       const firstDoc = fileArr.find(f => !f.type.startsWith("image/") && docKind(f) !== null);
@@ -244,7 +276,54 @@ export default function HomePage() {
       {/* ── Viewfinder / text input area ──── */}
       <div className="flex flex-col items-center px-5 pt-2 flex-shrink-0">
         <AnimatePresence mode="wait">
-          {!textMode ? (
+          {reviewMode ? (
+            <motion.div key="review" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className="w-full">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-bold" style={{ color: "var(--ink)" }}>Add a description</p>
+                <button onClick={cancelReview}
+                  className="w-7 h-7 flex items-center justify-center rounded-full"
+                  style={{ background: "var(--surface-2)" }}>
+                  <X size={14} style={{ color: "var(--muted)" }} />
+                </button>
+              </div>
+
+              {/* Previews of the chosen file(s) */}
+              <div className="flex gap-2 overflow-x-auto pb-1 mb-3" style={{ scrollbarWidth: "none" }}>
+                {pendingFiles.map((f, i) => (
+                  pendingPreviews[i] ? (
+                    <div key={i} className="flex-shrink-0 rounded-2xl overflow-hidden border"
+                      style={{
+                        width: pendingFiles.length === 1 ? "100%" : 96,
+                        height: pendingFiles.length === 1 ? 160 : 96,
+                        borderColor: "var(--border)",
+                      }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={pendingPreviews[i]} alt={`Selected ${i + 1}`} className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div key={i} className="flex-shrink-0 flex items-center gap-2 px-3.5 py-3 rounded-2xl border"
+                      style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+                      <FileText size={18} style={{ color: "var(--violet-600)" }} />
+                      <span className="text-sm font-medium truncate" style={{ color: "var(--ink)", maxWidth: 200 }}>{f.name}</span>
+                    </div>
+                  )
+                ))}
+              </div>
+
+              <textarea
+                value={describe}
+                onChange={e => setDescribe(e.target.value)}
+                placeholder="Describe it or ask a question (optional). E.g. 'Found this in my mailbox — is it a real bill?'"
+                className="w-full rounded-2xl p-4 text-sm resize-none border outline-none transition-all"
+                rows={4}
+                style={{ background: "var(--surface)", borderColor: describe ? "var(--violet-600)" : "var(--border)", color: "var(--ink)", lineHeight: "1.6", boxShadow: describe ? "0 0 0 3px rgba(108,60,224,.12)" : "none" }}
+              />
+              {error && (
+                <p className="text-xs mt-1.5 font-medium" style={{ color: "var(--u-scam-text)" }}>{error}</p>
+              )}
+            </motion.div>
+          ) : !textMode ? (
             <motion.div key="vf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="flex flex-col items-center w-full">
               <div className="relative animate-scanpulse" style={{ width: 148, height: 148 }}>
@@ -301,7 +380,7 @@ export default function HomePage() {
 
       {/* ── Scrollable middle ───────────────── */}
       <div className="flex-1 flex flex-col min-h-0 px-5 mt-3 overflow-y-auto pb-2" style={{ scrollbarWidth: "none" }}>
-        {recent.length > 0 && !textMode && (
+        {recent.length > 0 && !textMode && !reviewMode && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--muted)", letterSpacing: "0.1em" }}>Recent</p>
@@ -340,7 +419,7 @@ export default function HomePage() {
           </motion.div>
         )}
 
-        {!textMode && (
+        {!textMode && !reviewMode && (
           <div className="flex flex-col gap-2">
             {(recent.length === 0) && <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "var(--muted)", letterSpacing: "0.1em" }}>What I can explain</p>}
             {examples.map(item => (
@@ -361,7 +440,23 @@ export default function HomePage() {
       <div className="flex items-center justify-center gap-10 pb-20 pt-2 flex-shrink-0"
         style={{ borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
 
-        {!textMode ? (
+        {reviewMode ? (
+          <div className="flex items-center gap-3 w-full px-4 pt-3">
+            <button
+              onClick={cancelReview}
+              className="px-5 py-3.5 rounded-2xl text-base font-bold transition-all active:scale-[0.98]"
+              style={{ background: "var(--surface-2)", color: "var(--ink)", border: "1px solid var(--border)" }}>
+              Cancel
+            </button>
+            <button
+              onClick={startAnalysis}
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-base font-bold text-white transition-all active:scale-[0.98]"
+              style={{ background: "var(--brand-gradient)", boxShadow: "var(--brand-glow)" }}>
+              {isAnalyzing ? <Loader2 size={18} className="animate-spin" /> : <ScanLine size={18} strokeWidth={2.2} />}
+              Explain it
+            </button>
+          </div>
+        ) : !textMode ? (
           <>
             <div className="flex flex-col items-center gap-1.5 pt-3">
               <button onClick={() => galleryInputRef.current?.click()}
@@ -405,12 +500,12 @@ export default function HomePage() {
       {/* Hidden file inputs */}
       {/* No `accept` filter on purpose: some mobile pickers gray out PDFs and
           documents when the list is restrictive. We accept any file and
-          validate the type in handleFiles instead. */}
+          validate the type in startAnalysis instead. */}
       <input ref={galleryInputRef} type="file"
         multiple className="hidden"
-        onChange={e => handleFiles(e.target.files)} />
+        onChange={e => { handleFilesChosen(e.target.files); e.target.value = ""; }} />
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
-        onChange={e => handleFiles(e.target.files)} />
+        onChange={e => { handleFilesChosen(e.target.files); e.target.value = ""; }} />
 
       <BottomNav />
     </div>

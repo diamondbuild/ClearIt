@@ -139,7 +139,7 @@ export function ShareSheet({ analysis, onClose }: ShareSheetProps) {
                   {analysis.nextSteps.map((step, i) => (
                     <li key={i} className="flex items-start gap-2.5">
                       <span className="flex-shrink-0 w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center mt-0.5"
-                        style={{ background: "var(--ink)", color: "#fff" }}>
+                        style={{ background: "var(--ink)", color: "var(--bg)" }}>
                         {i + 1}
                       </span>
                       <span className="text-sm leading-relaxed" style={{ color: "var(--body)" }}>{step}</span>

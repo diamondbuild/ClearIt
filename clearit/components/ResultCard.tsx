@@ -258,7 +258,7 @@ export function ResultCard({ analysis, onSave, isSaved, onAnalyzeAnother, onShar
           </h1>
 
           {/* Summary */}
-          <p className="text-sm leading-relaxed mb-4" style={{ color: "#5C5568" }}>
+          <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--body)" }}>
             {analysis.oneSentenceSummary}
           </p>
 
@@ -299,7 +299,7 @@ export function ResultCard({ analysis, onSave, isSaved, onAnalyzeAnother, onShar
 
       {/* Section: What it means */}
       <SectionCard icon={Lightbulb} iconColor="var(--violet-600)" iconBg="var(--violet-tint)" title="What it means">
-        <p className="text-sm leading-relaxed mt-3" style={{ color: "#454051", lineHeight: 1.6 }}>
+        <p className="text-sm leading-relaxed mt-3" style={{ color: "var(--body)", lineHeight: 1.6 }}>
           {analysis.whatItMeans}
         </p>
       </SectionCard>
@@ -311,7 +311,7 @@ export function ResultCard({ analysis, onSave, isSaved, onAnalyzeAnother, onShar
             {analysis.nextSteps.map((step, i) => (
               <li key={i} className="flex items-start gap-3">
                 <span className="flex-shrink-0 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center mt-0.5"
-                  style={{ background: "var(--ink)", color: "white" }}>
+                  style={{ background: "var(--ink)", color: "var(--bg)" }}>
                   {i + 1}
                 </span>
                 <span className="text-sm leading-relaxed" style={{ color: "var(--ink)" }}>{step}</span>
@@ -323,7 +323,7 @@ export function ResultCard({ analysis, onSave, isSaved, onAnalyzeAnother, onShar
 
       {/* What this is */}
       <SectionCard icon={FileText} iconColor="var(--muted)" iconBg="var(--surface-2)" title="What this is" defaultOpen={false}>
-        <p className="text-sm leading-relaxed mt-3" style={{ color: "#454051" }}>{analysis.whatThisIs}</p>
+        <p className="text-sm leading-relaxed mt-3" style={{ color: "var(--body)" }}>{analysis.whatThisIs}</p>
       </SectionCard>
 
       {/* Key details */}

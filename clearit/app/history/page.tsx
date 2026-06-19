@@ -71,12 +71,21 @@ export default function HistoryPage() {
 
   useEffect(() => {
     const load = async () => {
-      if (supabaseConfigured) {
-        const cloud = await fetchHistoryFromSupabase(100);
-        if (cloud.length > 0) { setHistory(cloud); setLoaded(true); return; }
+      try {
+        if (supabaseConfigured) {
+          const cloud = await fetchHistoryFromSupabase(100);
+          if (cloud.length > 0) {
+            setHistory(cloud);
+            return;
+          }
+        }
+        // Fall back to localStorage (always works offline)
+        setHistory(getHistory());
+      } catch {
+        setHistory(getHistory());
+      } finally {
+        setLoaded(true);
       }
-      setHistory(getHistory());
-      setLoaded(true);
     };
     load();
   }, []);
@@ -94,7 +103,7 @@ export default function HistoryPage() {
   const groups = useMemo(() => groupByDate(filtered), [filtered]);
 
   const handleOpen = (item: HistoryItem) => {
-    sessionStorage.setItem(`clearit_pending_${item.id}`, JSON.stringify({ analysis: item.result, textSnippet: item.textSnippet, usedImage: item.usedImage }));
+    sessionStorage.setItem(`lci_pending_${item.id}`, JSON.stringify({ analysis: item.result, textSnippet: item.textSnippet, usedImage: item.usedImage }));
     router.push(`/result?id=${item.id}&from=history`);
   };
 

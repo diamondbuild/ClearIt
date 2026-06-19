@@ -79,7 +79,7 @@ export default function HomePage() {
       const data = await res.json();
       if (!data.success || !data.data) throw new Error(data.error || "Couldn't analyze this.");
       const analysis: ClearItAnalysis = data.data;
-      sessionStorage.setItem(`clearit_pending_${analysis.id}`, JSON.stringify({
+      sessionStorage.setItem(`lci_pending_${analysis.id}`, JSON.stringify({
         analysis,
         textSnippet: body.text ? String(body.text).slice(0, 200) : undefined,
         usedImage: !body.text || !!(body.images),
@@ -153,7 +153,7 @@ export default function HomePage() {
           </div>
           <span className="text-xl font-extrabold tracking-tight"
             style={{ fontFamily: "var(--font-bricolage), sans-serif", color: "var(--ink)" }}>
-            ClearIt
+            LetsConfirmIt
           </span>
         </div>
       </div>
@@ -228,7 +228,7 @@ export default function HomePage() {
               {recent.map((item, i) => (
                 <motion.button key={item.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
                   onClick={() => {
-                    sessionStorage.setItem(`clearit_pending_${item.id}`, JSON.stringify({ analysis: item.result, textSnippet: item.textSnippet, usedImage: item.usedImage }));
+                    sessionStorage.setItem(`lci_pending_${item.id}`, JSON.stringify({ analysis: item.result, textSnippet: item.textSnippet, usedImage: item.usedImage }));
                     router.push(`/result?id=${item.id}&from=history`);
                   }}
                   className="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-left transition-all active:scale-[0.98]"

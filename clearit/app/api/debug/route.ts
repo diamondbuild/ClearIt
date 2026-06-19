@@ -50,7 +50,7 @@ export async function GET() {
     try {
       // Use Node https directly — Next.js fetch patches strip Authorization headers
       const bodyStr = JSON.stringify({
-        model: "meta-llama/llama-3.2-90b-vision-instruct",
+        model: "mistralai/mistral-7b-instruct:free",
         messages: [{ role: "user", content: 'Reply with exactly this JSON: {"ok":true}' }],
         max_tokens: 50,
       });
@@ -71,9 +71,9 @@ export async function GET() {
         req.on("error", reject); req.write(bodyStr); req.end();
       });
       const orData = JSON.parse(orResponse);
-      results.gemini = { status: "ok", model: "openrouter/llama-3.2-90b-vision", response: orData?.choices?.[0]?.message?.content };
+      results.gemini = { status: "ok", model: "openrouter/llama-3.2-90b-vision", keyPrefix: orKey.slice(0,12)+"...", response: orData?.choices?.[0]?.message?.content };
     } catch (err) {
-      results.gemini = { status: "error", model: "openrouter/llama-3.2-90b-vision", error: err instanceof Error ? err.message : String(err) };
+      results.gemini = { status: "error", model: "openrouter/llama-3.2-90b-vision", keyPrefix: orKey.slice(0,12)+"...", keyLength: orKey.length, error: err instanceof Error ? err.message : String(err) };
     }
   } else if (groqKey) {
     try {

@@ -48,14 +48,17 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${bricolage.variable} ${hanken.variable} h-full`}>
+    <html lang="en" className={`${bricolage.variable} ${hanken.variable} h-full`} suppressHydrationWarning>
       <head>
-        {/* Apply saved text size before first paint — prevents flash */}
+        {/* Apply saved text size + theme before first paint — prevents flash */}
         <script dangerouslySetInnerHTML={{ __html: `
           try {
             var s = localStorage.getItem('clearit_text_size');
             var sizes = { small: '14px', regular: '16px', large: '18px' };
             if (s && sizes[s]) document.documentElement.style.fontSize = sizes[s];
+            var t = localStorage.getItem('clearit_theme');
+            var dark = t === 'dark' || (!t && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            if (dark) document.documentElement.classList.add('dark');
           } catch(e) {}
         `}} />
       </head>

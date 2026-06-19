@@ -191,21 +191,26 @@ export default function HomePage() {
         ) : (
           /* Empty state — feature hints */
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-            className="flex flex-col gap-2.5">
+            className="flex flex-col gap-2">
             {[
-              { emoji: "🧾", label: "Bills & notices", hint: "Due dates, amounts, what to do" },
-              { emoji: "⚠️", label: "Scam checks", hint: "Links, texts, suspicious emails" },
-              { emoji: "💊", label: "Pills & forms", hint: "Medications, school forms, alerts" },
+              { emoji: "🧾", label: "Bills & notices",      hint: "Due dates, amounts, what to do" },
+              { emoji: "⚠️", label: "Scam checks",          hint: "Suspicious texts, emails, links" },
+              { emoji: "💊", label: "Pills & medications",   hint: "What is it, dosage, side effects" },
+              { emoji: "🐦", label: "Animals & nature",      hint: "Snap a bird, bug, plant, or mushroom" },
+              { emoji: "😂", label: "Memes & images",        hint: "What is this meme or viral photo?" },
+              { emoji: "🧑‍⚖️", label: "Legal & gov notices", hint: "Court letters, IRS, eviction, tickets" },
+              { emoji: "📱", label: "App errors",            hint: "What does this error mean and how to fix" },
+              { emoji: "🏛️", label: "Places & landmarks",   hint: "Where is this? What's its history?" },
             ].map(item => (
-              <button key={item.label} onClick={() => router.push("/analyze")}
-                className="flex items-center gap-3 px-3.5 py-3 rounded-2xl text-left transition-all active:scale-[0.98]"
-                style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.09)" }}>
-                <span className="text-xl leading-none">{item.emoji}</span>
+              <div key={item.label}
+                className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl"
+                style={{ background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.07)", cursor: "default" }}>
+                <span className="text-lg leading-none flex-shrink-0">{item.emoji}</span>
                 <div>
                   <p className="text-sm font-semibold text-white">{item.label}</p>
-                  <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,.45)" }}>{item.hint}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,.4)" }}>{item.hint}</p>
                 </div>
-              </button>
+              </div>
             ))}
           </motion.div>
         )}

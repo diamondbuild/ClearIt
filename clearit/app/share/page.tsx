@@ -57,7 +57,7 @@ export default function SharePage() {
         <p className="text-sm mb-6" style={{ color: "#857C92" }}>This share link is no longer valid.</p>
         <Link href="/" className="px-6 py-3 rounded-2xl text-sm font-bold text-white"
           style={{ background: "linear-gradient(135deg,#6C3CE0,#FF6A45)" }}>
-          Try ClearIt yourself
+          Try LetsConfirmIt yourself
         </Link>
       </div>
     );
@@ -187,17 +187,17 @@ export default function SharePage() {
       <div className="rounded-2xl p-4 text-center border mt-2"
         style={{ background: "#fff", borderColor: "#E6DECF" }}>
         <p className="text-xs mb-3" style={{ color: "#857C92" }}>
-          Explained by ClearIt — point your camera at anything confusing.
+          Explained by LetsConfirmIt — point your camera at anything confusing.
         </p>
         <Link href="/"
           className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold text-white"
           style={{ background: "linear-gradient(135deg,#6C3CE0,#FF6A45)" }}>
-          Try ClearIt free
+          Try LetsConfirmIt free
         </Link>
       </div>
 
       <p className="text-xs text-center pb-4" style={{ color: "#C4BBCB" }}>
-        ClearIt helps explain information. Not legal, medical, or financial advice.
+        LetsConfirmIt helps explain information. Not legal, medical, or financial advice.
       </p>
     </div>
   );

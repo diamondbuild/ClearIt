@@ -89,7 +89,7 @@ export function ShareSheet({ analysis, onClose }: ShareSheetProps) {
                 <Focus size={14} className="text-white" strokeWidth={2.2} />
               </div>
               <span className="text-sm font-bold" style={{ color: "var(--ink)" }}>
-                ClearIt Summary
+                LetsConfirmIt Summary
               </span>
             </div>
             <button onClick={onClose}
@@ -206,7 +206,7 @@ export function ShareSheet({ analysis, onClose }: ShareSheetProps) {
 
             {/* Footer */}
             <p className="text-xs text-center pb-1" style={{ color: "var(--muted)" }}>
-              Explained by ClearIt
+              Explained by LetsConfirmIt
             </p>
           </div>
 

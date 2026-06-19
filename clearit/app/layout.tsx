@@ -17,11 +17,22 @@ const hanken = Hanken_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "ClearIt — What is this?",
+  title: "LetsConfirmIt — What is this?",
   description:
-    "Point at anything confusing. ClearIt tells you what it is, what it means, and what to do.",
+    "Point at anything confusing. LetsConfirmIt tells you what it is, what it means, and what to do.",
   manifest: "/manifest.json",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "ClearIt" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "LetsConfirmIt" },
+  openGraph: {
+    title: "LetsConfirmIt — What is this?",
+    description: "Point at anything confusing and get a plain-English answer.",
+    type: "website",
+    siteName: "LetsConfirmIt",
+  },
+  twitter: {
+    card: "summary",
+    title: "LetsConfirmIt",
+    description: "Point at anything confusing and get a plain-English answer.",
+  },
 };
 
 export const viewport: Viewport = {

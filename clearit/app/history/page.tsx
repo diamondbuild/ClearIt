@@ -70,16 +70,17 @@ export default function HistoryPage() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const local = getHistory();
-        const localMap = new Map(local.map(i => [i.id, i]));
+    // Show localStorage items immediately so history is never blank
+    const local = getHistory();
+    setHistory(local);
+    setLoaded(true);
 
-        if (supabaseConfigured) {
-          const cloud = await fetchHistoryFromSupabase(100);
+    // Then try Supabase in background and merge if it has items
+    if (supabaseConfigured) {
+      fetchHistoryFromSupabase(100)
+        .then(cloud => {
           if (cloud.length > 0) {
-            // Supplement Supabase items with local thumbnails when cloud
-            // thumbnail_urls is empty (upload may still be in progress)
+            const localMap = new Map(local.map(i => [i.id, i]));
             const enriched = cloud.map(item => ({
               ...item,
               thumbnails: item.thumbnails?.length
@@ -87,18 +88,10 @@ export default function HistoryPage() {
                 : localMap.get(item.id)?.thumbnails ?? [],
             }));
             setHistory(enriched);
-            return;
           }
-        }
-        // Fall back to localStorage
-        setHistory(local);
-      } catch {
-        setHistory(getHistory());
-      } finally {
-        setLoaded(true);
-      }
-    };
-    load();
+        })
+        .catch(() => {/* keep localStorage items */});
+    }
   }, []);
 
   const filtered = useMemo(() => {

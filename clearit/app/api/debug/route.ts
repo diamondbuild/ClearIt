@@ -100,11 +100,23 @@ export async function GET() {
     try {
       const { createClient } = await import("@supabase/supabase-js");
       const sb = createClient(sbUrl, sbAnon);
-      const { data, error, count } = await sb.from("analyses").select("id", { count: "exact", head: true });
-      if (error) {
-        results.supabase = { status: "error", error: error.message, hint: error.hint ?? "" };
+      // Count check
+      const { count, error: countErr } = await sb.from("analyses").select("id", { count: "exact", head: true });
+      if (countErr) {
+        results.supabase = { status: "error", error: countErr.message, hint: countErr.hint ?? "" };
       } else {
-        results.supabase = { status: "ok", rowCount: count ?? 0 };
+        // Also do a real SELECT to verify data is readable
+        const { data: rows, error: selectErr } = await sb
+          .from("analyses")
+          .select("id, category, urgency, plain_title, created_at")
+          .order("created_at", { ascending: false })
+          .limit(3);
+        results.supabase = {
+          status: selectErr ? "select_error" : "ok",
+          rowCount: count ?? 0,
+          selectError: selectErr?.message ?? null,
+          sampleRows: rows?.map(r => ({ id: r.id?.slice(0, 8), category: r.category, urgency: r.urgency })) ?? [],
+        };
       }
     } catch (err) {
       results.supabase = { status: "error", error: err instanceof Error ? err.message : String(err) };

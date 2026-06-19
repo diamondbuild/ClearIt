@@ -110,7 +110,7 @@ export default function HistoryPage() {
   const groups = useMemo(() => groupByDate(filtered), [filtered]);
 
   const handleOpen = (item: HistoryItem) => {
-    sessionStorage.setItem(`lci_pending_${item.id}`, JSON.stringify({ analysis: item.result, textSnippet: item.textSnippet, usedImage: item.usedImage }));
+    sessionStorage.setItem(`lci_pending_${item.id}`, JSON.stringify({ analysis: item.result, textSnippet: item.textSnippet, usedImage: item.usedImage, thumbnails: item.thumbnails ?? [] }));
     router.push(`/result?id=${item.id}&from=history`);
   };
 

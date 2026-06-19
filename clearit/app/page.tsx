@@ -231,7 +231,7 @@ export default function HomePage() {
               {recent.map((item, i) => (
                 <motion.button key={item.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
                   onClick={() => {
-                    sessionStorage.setItem(`lci_pending_${item.id}`, JSON.stringify({ analysis: item.result, textSnippet: item.textSnippet, usedImage: item.usedImage }));
+                    sessionStorage.setItem(`lci_pending_${item.id}`, JSON.stringify({ analysis: item.result, textSnippet: item.textSnippet, usedImage: item.usedImage, thumbnails: item.thumbnails ?? [] }));
                     router.push(`/result?id=${item.id}&from=history`);
                   }}
                   className="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-left transition-all active:scale-[0.98]"

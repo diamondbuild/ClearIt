@@ -43,6 +43,7 @@ function getOpenRouterClient(): OpenAI | null {
     apiKey,
     baseURL: "https://openrouter.ai/api/v1",
     defaultHeaders: {
+      "Authorization": `Bearer ${apiKey}`,
       "HTTP-Referer": "https://letsconfirmit.com",
       "X-Title": "LetsConfirmIt",
     },

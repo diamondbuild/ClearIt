@@ -71,6 +71,11 @@ export const ClearItAnalysisSchema = z.object({
     .optional()
     .transform((v) => v ?? []),
   suggestedQuestions: safeStrArray,
+  suggestedQA: z
+    .array(z.object({ q: safeStr, a: safeStr }))
+    .nullable()
+    .optional()
+    .transform(v => v ?? []),
   callScript: safeStr,
   replyDraft: safeStr,
   checklist: safeStrArray,

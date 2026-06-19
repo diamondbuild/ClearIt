@@ -76,6 +76,7 @@ The JSON must have ALL of these fields:
   "keyDetails": [{"label": "field name", "value": "field value"}],
   "detectedDeadlines": [{"label": "...", "dateText": "...", "explanation": "..."}],
   "suggestedQuestions": ["interesting follow-up questions the user might have"],
+  "suggestedQA": [{"q": "A natural follow-up question", "a": "A plain-English answer — 1 to 3 sentences. Be specific and helpful."}],
   "callScript": "relevant only for documents/scams — otherwise empty string",
   "replyDraft": "relevant only for messages — otherwise empty string",
   "checklist": ["relevant action checklist items, or empty array []"],

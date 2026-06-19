@@ -94,6 +94,37 @@ function CopyBlock({ text, label }: { text: string; label: string }) {
   );
 }
 
+function QAItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  const hasAnswer = !!a;
+  return (
+    <div className="rounded-2xl overflow-hidden border transition-all"
+      style={{ borderColor: open ? "var(--violet-200)" : "var(--border)", background: open ? "var(--violet-tint)" : "var(--surface)" }}>
+      <button onClick={() => hasAnswer && setOpen(!open)}
+        className="w-full flex items-start gap-3 px-4 py-3 text-left"
+        style={{ cursor: hasAnswer ? "pointer" : "default" }}>
+        <span className="text-sm font-bold flex-shrink-0 mt-0.5" style={{ color: "var(--violet-600)" }}>Q</span>
+        <span className="text-sm font-medium flex-1 leading-snug" style={{ color: "var(--ink)" }}>{q}</span>
+        {hasAnswer && (
+          <ChevronDown size={15} className="flex-shrink-0 mt-0.5 transition-transform"
+            style={{ color: "var(--muted)", transform: open ? "rotate(180deg)" : "rotate(0deg)" }} />
+        )}
+      </button>
+      <AnimatePresence>
+        {open && hasAnswer && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18 }} className="overflow-hidden">
+            <div className="flex items-start gap-3 px-4 pb-4 pt-1 border-t" style={{ borderColor: "var(--violet-200)" }}>
+              <span className="text-sm font-bold flex-shrink-0 mt-0.5" style={{ color: "var(--violet-400)" }}>A</span>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--body)" }}>{a}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function ChecklistBlock({ items }: { items: string[] }) {
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const toggle = (i: number) => setChecked(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
@@ -375,16 +406,17 @@ export function ResultCard({ analysis, onSave, isSaved, onAnalyzeAnother, onShar
         )}
       </div>
 
-      {/* Suggested questions */}
-      {analysis.suggestedQuestions.length > 0 && (
-        <SectionCard icon={BookOpen} iconColor="var(--muted)" iconBg="var(--surface-2)" title="You might wonder" defaultOpen={false}>
-          <ul className="flex flex-col gap-2 mt-3">
-            {analysis.suggestedQuestions.map((q, i) => (
-              <li key={i} className="text-sm leading-relaxed" style={{ color: "var(--body)" }}>
-                <span style={{ color: "var(--muted)" }}>Q: </span>{q}
-              </li>
+      {/* You might wonder — Q&A */}
+      {(analysis.suggestedQA?.length || analysis.suggestedQuestions.length > 0) && (
+        <SectionCard icon={BookOpen} iconColor="var(--muted)" iconBg="var(--surface-2)" title="You might wonder" defaultOpen>
+          <div className="flex flex-col gap-2 mt-3">
+            {(analysis.suggestedQA?.length
+              ? analysis.suggestedQA
+              : analysis.suggestedQuestions.map(q => ({ q, a: "" }))
+            ).map((item, i) => (
+              <QAItem key={i} q={item.q} a={item.a} />
             ))}
-          </ul>
+          </div>
         </SectionCard>
       )}
     </motion.div>

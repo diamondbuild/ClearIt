@@ -7,6 +7,8 @@ import { ResultCard } from "@/components/ResultCard";
 import { ShareSheet } from "@/components/ShareSheet";
 import { ClearItAnalysis } from "@/lib/types";
 import { saveToHistory, getHistoryItem } from "@/lib/storage/history";
+import { saveAnalysisToSupabase, uploadThumbnails, fetchAnalysisById } from "@/lib/supabase/db";
+import { supabaseConfigured } from "@/lib/supabase/client";
 
 function ResultPage() {
   const router = useRouter();
@@ -24,56 +26,106 @@ function ResultPage() {
 
   useEffect(() => {
     if (!id) { setNotFound(true); return; }
-    const sessionKey = `clearit_pending_${id}`;
-    const sessionData = sessionStorage.getItem(sessionKey);
-    if (sessionData) {
-      try {
-        const parsed = JSON.parse(sessionData);
-        setAnalysis(parsed.analysis);
-        setTextSnippet(parsed.textSnippet);
-        setUsedImage(parsed.usedImage);
-        if (parsed.thumbnails?.length) setThumbnails(parsed.thumbnails);
-        // Auto-save every new result to history
-        if (!fromHistory) {
-          saveToHistory(parsed.analysis, {
-            textSnippet: parsed.textSnippet,
-            usedImage: parsed.usedImage,
-            thumbnails: parsed.thumbnails,
-          });
-          setIsSaved(true);
-        }
-        return;
-      } catch { /* fall through */ }
-    }
-    const historyItem = getHistoryItem(id);
-    if (historyItem) {
-      setAnalysis(historyItem.result);
-      setTextSnippet(historyItem.textSnippet);
-      setUsedImage(historyItem.usedImage);
-      setIsSaved(true);
-      return;
-    }
-    setNotFound(true);
-  }, [id, fromHistory]);
 
-  const handleSave = () => {
-    if (!analysis) return;
-    saveToHistory(analysis, { textSnippet, usedImage });
-    setIsSaved(true);
-  };
+    const load = async () => {
+      // 1. Try sessionStorage first (fresh analysis)
+      const sessionKey = `clearit_pending_${id}`;
+      const sessionData = sessionStorage.getItem(sessionKey);
+      if (sessionData) {
+        try {
+          const parsed = JSON.parse(sessionData);
+          setAnalysis(parsed.analysis);
+          setTextSnippet(parsed.textSnippet);
+          setUsedImage(parsed.usedImage);
+
+          const localThumbs: string[] = parsed.thumbnails ?? [];
+          let storedThumbs: string[] = localThumbs;
+
+          // Auto-save to both localStorage and Supabase
+          if (!fromHistory) {
+            // LocalStorage (always)
+            saveToHistory(parsed.analysis, {
+              textSnippet: parsed.textSnippet,
+              usedImage: parsed.usedImage,
+              thumbnails: localThumbs,
+            });
+            setIsSaved(true);
+
+            // Supabase (when configured) — upload thumbnails then save row
+            if (supabaseConfigured && localThumbs.length > 0) {
+              uploadThumbnails(id, localThumbs).then(urls => {
+                storedThumbs = urls.length > 0 ? urls : localThumbs;
+                setThumbnails(storedThumbs);
+                saveAnalysisToSupabase(parsed.analysis, {
+                  textSnippet: parsed.textSnippet,
+                  usedImage: parsed.usedImage,
+                  thumbnailUrls: urls,
+                });
+              }).catch(() => {
+                setThumbnails(localThumbs);
+                saveAnalysisToSupabase(parsed.analysis, {
+                  textSnippet: parsed.textSnippet,
+                  usedImage: parsed.usedImage,
+                });
+              });
+            } else if (supabaseConfigured) {
+              saveAnalysisToSupabase(parsed.analysis, {
+                textSnippet: parsed.textSnippet,
+                usedImage: parsed.usedImage,
+              });
+              setThumbnails(localThumbs);
+            } else {
+              setThumbnails(localThumbs);
+            }
+          } else {
+            setThumbnails(localThumbs);
+          }
+          return;
+        } catch { /* fall through */ }
+      }
+
+      // 2. Try Supabase (shared link or cross-device)
+      if (supabaseConfigured) {
+        const sbData = await fetchAnalysisById(id);
+        if (sbData) {
+          setAnalysis(sbData.analysis);
+          setTextSnippet(sbData.textSnippet);
+          setUsedImage(sbData.usedImage);
+          setThumbnails(sbData.thumbnails);
+          setIsSaved(true);
+          return;
+        }
+      }
+
+      // 3. Try localStorage history
+      const historyItem = getHistoryItem(id);
+      if (historyItem) {
+        setAnalysis(historyItem.result);
+        setTextSnippet(historyItem.textSnippet);
+        setUsedImage(historyItem.usedImage);
+        setThumbnails(historyItem.thumbnails ?? []);
+        setIsSaved(true);
+        return;
+      }
+
+      setNotFound(true);
+    };
+
+    load();
+  }, [id, fromHistory]);
 
   const handleShare = () => setShowShareSheet(true);
 
   if (notFound) return (
-    <AppShell title="Result" backHref="/analyze">
+    <AppShell title="Result" backHref="/">
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
         <div className="text-5xl mb-4">🔍</div>
         <h3 className="text-lg font-bold mb-2" style={{ color: "var(--ink)" }}>Result not found</h3>
         <p className="text-sm mb-6" style={{ color: "var(--muted)" }}>This result may have expired.</p>
-        <button onClick={() => router.push("/analyze")}
+        <button onClick={() => router.push("/")}
           className="px-6 py-3 rounded-2xl text-sm font-bold text-white"
           style={{ background: "var(--brand-gradient)" }}>
-          Analyze something
+          Back home
         </button>
       </div>
     </AppShell>
@@ -88,16 +140,11 @@ function ResultPage() {
   );
 
   return (
-    <AppShell
-      title="Your answer"
-      onBack={() => router.push("/analyze")}
-      showShare
-      onShare={handleShare}
-    >
+    <AppShell title="Your answer" onBack={() => router.push("/")} showShare onShare={handleShare}>
       <ResultCard
         analysis={analysis}
         isSaved={isSaved}
-        onAnalyzeAnother={() => router.push("/analyze")}
+        onAnalyzeAnother={() => router.push("/")}
         onShare={handleShare}
         thumbnails={thumbnails}
       />

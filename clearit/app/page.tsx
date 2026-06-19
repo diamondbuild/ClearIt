@@ -291,7 +291,7 @@ export default function HomePage() {
                 style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
                 <ImageIcon size={22} style={{ color: "var(--ink)" }} strokeWidth={2} />
               </button>
-              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--muted)" }}>Gallery</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--muted)" }}>Upload</span>
             </div>
             <div className="flex flex-col items-center gap-1.5 pt-3">
               <button onClick={() => cameraInputRef.current?.click()}

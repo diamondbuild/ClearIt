@@ -140,7 +140,7 @@ export default function SettingsPage() {
 
       {/* Clear history confirm */}
       {showClearConfirm && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-3xl p-6 flex flex-col gap-4"
             style={{ background: "var(--surface)" }}>
             <h3 className="text-base font-bold" style={{ color: "var(--ink)" }}>Clear all history?</h3>

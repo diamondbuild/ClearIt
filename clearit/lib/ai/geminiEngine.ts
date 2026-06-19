@@ -4,7 +4,7 @@
  * Priority:
  * 1. OpenRouter (OPENROUTER_API_KEY) — uses a vision-capable model so it
  *    can actually SEE the images, not just read GPT's description.
- *    Model: meta-llama/llama-3.2-90b-vision-instruct (free tier available)
+ *    Model: meta-llama/llama-3.2-11b-vision-instruct:free (free tier available)
  *
  * 2. Groq (GROQ_API_KEY) — text-only fallback using Llama 3.3 70B.
  *    Fast and free. Cross-checks based on GPT's summary + original text.
@@ -41,7 +41,7 @@ Return ONLY valid JSON. No markdown.`;
 // strip Authorization headers on outbound requests.
 async function callOpenRouterRaw(
   messages: { role: string; content: unknown }[],
-  model = "meta-llama/llama-3.2-90b-vision-instruct"
+  model = "meta-llama/llama-3.2-11b-vision-instruct:free"
 ): Promise<string | null> {
   const apiKey = process.env.OPENROUTER_API_KEY?.trim();
   if (!apiKey) return null;

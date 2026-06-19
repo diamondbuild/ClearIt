@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Search, Trash2, FileText, ShieldAlert, Zap, CheckCircle, Info, HelpCircle, Clock } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { UrgencyDot } from "@/components/UrgencyBadge";
@@ -72,6 +72,7 @@ export default function HistoryPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [query, setQuery] = useState("");
   const [loaded, setLoaded] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<HistoryItem | null>(null);
 
   useEffect(() => {
     // Show localStorage items immediately so history is never blank
@@ -115,11 +116,18 @@ export default function HistoryPage() {
     router.push(`/result?id=${item.id}&from=history`);
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const requestDelete = (item: HistoryItem, e: React.MouseEvent) => {
     e.stopPropagation();
+    setPendingDelete(item);
+  };
+
+  const confirmDelete = () => {
+    if (!pendingDelete) return;
+    const id = pendingDelete.id;
     deleteHistoryItem(id);
     if (supabaseConfigured) deleteAnalysisFromSupabase(id);
     setHistory(prev => prev.filter(h => h.id !== id));
+    setPendingDelete(null);
   };
 
   return (
@@ -209,7 +217,8 @@ export default function HistoryPage() {
                       <UrgencyDot urgency={item.urgency} />
 
                       {/* Delete */}
-                      <button onClick={e => handleDelete(item.id, e)}
+                      <button onClick={e => requestDelete(item, e)}
+                        aria-label="Delete this entry"
                         className="w-7 h-7 flex items-center justify-center rounded-lg ml-1"
                         style={{ color: "var(--muted)" }}>
                         <Trash2 size={14} />
@@ -222,6 +231,52 @@ export default function HistoryPage() {
           ))}
         </div>
       )}
+
+      {/* Delete confirmation */}
+      <AnimatePresence>
+        {pendingDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4"
+            onClick={() => setPendingDelete(null)}
+          >
+            <motion.div
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 24, opacity: 0 }}
+              transition={{ type: "spring", damping: 30, stiffness: 320 }}
+              onClick={e => e.stopPropagation()}
+              className="w-full max-w-md rounded-3xl p-6 flex flex-col gap-4"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+            >
+              <h3 className="text-base font-bold" style={{ color: "var(--ink)" }}>
+                Delete this answer?
+              </h3>
+              <p className="text-sm" style={{ color: "var(--muted)" }}>
+                &ldquo;{pendingDelete.plainTitle}&rdquo; will be permanently removed from your history.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPendingDelete(null)}
+                  className="flex-1 py-3 rounded-2xl text-sm font-semibold border"
+                  style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--ink)" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 py-3 rounded-2xl text-sm font-bold text-white"
+                  style={{ background: "var(--u-scam-dot)" }}
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AppShell>
   );
 }

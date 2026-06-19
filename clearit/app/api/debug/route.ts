@@ -91,10 +91,30 @@ export async function GET() {
     results.gemini = { status: "no_key", message: "Set OPENROUTER_API_KEY (preferred) or GROQ_API_KEY" };
   }
 
+  // ── Supabase ─────────────────────────────────────────────────────────────
+  const sbUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const sbAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (!sbUrl || !sbAnon) {
+    results.supabase = { status: "no_key", message: "NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY not set" };
+  } else {
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const sb = createClient(sbUrl, sbAnon);
+      const { data, error, count } = await sb.from("analyses").select("id", { count: "exact", head: true });
+      if (error) {
+        results.supabase = { status: "error", error: error.message, hint: error.hint ?? "" };
+      } else {
+        results.supabase = { status: "ok", rowCount: count ?? 0 };
+      }
+    } catch (err) {
+      results.supabase = { status: "error", error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
   // ── Summary ─────────────────────────────────────────────────────────────
   const bothOk =
     (results.openai as { status: string })?.status === "ok" &&
     (results.gemini as { status: string })?.status === "ok";
 
-  return NextResponse.json({ bothOk, openai: results.openai, gemini: results.gemini });
+  return NextResponse.json({ bothOk, openai: results.openai, gemini: results.gemini, supabase: results.supabase });
 }

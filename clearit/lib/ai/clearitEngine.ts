@@ -186,10 +186,12 @@ export async function analyzeWithClearItEngine(
     throw new Error("JSON_PARSE_FAILED: " + rawContent.slice(0, 200));
   }
 
+  // Spread the model output first, then force server-assigned id + timestamp
+  // so a hallucinated createdAt/id from the model can never override them.
   const withDefaults = {
+    ...(parsed as Record<string, unknown>),
     id: nanoid(),
     createdAt: new Date().toISOString(),
-    ...(parsed as Record<string, unknown>),
   };
 
   try {

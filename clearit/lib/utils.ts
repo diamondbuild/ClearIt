@@ -84,55 +84,76 @@ export function urgencyShortLabel(urgency: Urgency): string {
 // Max ~800KB per image as base64 to stay under Vercel's 4.5MB payload limit
 const MAX_BASE64_BYTES = 800 * 1024;
 
-// Creates a thumbnail from an existing data URL (already decoded — no HEIC issues)
-export async function makeThumbnailFromBase64(dataUrl: string, size = 200): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      try {
-        const { width, height } = img;
-        if (!width || !height) return reject(new Error("invalid"));
-        const ratio = Math.min(size / width, size / height, 1); // never upscale
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(width * ratio);
-        canvas.height = Math.round(height * ratio);
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return reject(new Error("no ctx"));
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", 0.75));
-      } catch (e) { reject(e); }
-    };
-    img.onerror = () => reject(new Error("load failed"));
-    img.src = dataUrl;
-  });
-}
+/**
+ * Compresses an image AND generates a thumbnail in a single canvas pass.
+ * Drawing once from the original Object URL is reliable on iOS Safari.
+ * Two separate canvas operations (compress then thumbnail-from-base64)
+ * fail on iOS because re-loading a large base64 string into a new Image
+ * causes memory pressure and silent onload failures.
+ */
+export async function compressImageWithThumb(
+  file: File,
+  maxPx = 1280,
+  quality = 0.75,
+  thumbPx = 300
+): Promise<{ base64: string; thumb: string; mediaType: string }> {
+  const mediaType = file.type === "image/png" ? "image/png" : "image/jpeg";
 
-// Creates a small thumbnail data URL (for display only, not sent to API)
-export async function makeThumbnail(file: File, size = 160): Promise<string> {
-  const url = URL.createObjectURL(file);
   return new Promise((resolve, reject) => {
     const img = new Image();
+    const url = URL.createObjectURL(file);
+
     img.onload = () => {
+      URL.revokeObjectURL(url);
       try {
         const { width, height } = img;
-        if (!width || !height) { URL.revokeObjectURL(url); return reject(new Error("invalid dimensions")); }
-        const ratio = Math.min(size / width, size / height);
+
+        // ── Full-size compressed image ──────────────────────────────
+        const ratio = Math.min(maxPx / width, maxPx / height, 1);
         const canvas = document.createElement("canvas");
-        canvas.width = Math.round(width * ratio);
+        canvas.width  = Math.round(width * ratio);
         canvas.height = Math.round(height * ratio);
         const ctx = canvas.getContext("2d");
-        if (!ctx) { URL.revokeObjectURL(url); return reject(new Error("no canvas")); }
+        if (!ctx) throw new Error("no canvas context");
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        URL.revokeObjectURL(url);
-        resolve(canvas.toDataURL("image/jpeg", 0.72));
+
+        let q = quality;
+        let base64 = canvas.toDataURL("image/jpeg", q).split(",")[1];
+        while (base64.length > 800 * 1024 && q > 0.3) {
+          q -= 0.1;
+          base64 = canvas.toDataURL("image/jpeg", q).split(",")[1];
+        }
+
+        // ── Thumbnail (same img, new canvas, no second load) ────────
+        const tr = Math.min(thumbPx / width, thumbPx / height, 1);
+        const tc = document.createElement("canvas");
+        tc.width  = Math.round(width * tr);
+        tc.height = Math.round(height * tr);
+        const tctx = tc.getContext("2d");
+        let thumb = `data:image/jpeg;base64,${base64}`; // fallback
+        if (tctx) {
+          tctx.drawImage(img, 0, 0, tc.width, tc.height);
+          thumb = tc.toDataURL("image/jpeg", 0.65);
+        }
+
+        resolve({ base64, thumb, mediaType });
       } catch (e) {
-        URL.revokeObjectURL(url);
         reject(e);
       }
     };
+
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("image load failed")); };
     img.src = url;
   });
+}
+
+// Keep for backward compatibility
+export async function makeThumbnailFromBase64(dataUrl: string): Promise<string> {
+  return dataUrl; // no-op — use compressImageWithThumb instead
+}
+export async function makeThumbnail(file: File): Promise<string> {
+  const { thumb } = await compressImageWithThumb(file);
+  return thumb;
 }
 
 export async function compressImage(

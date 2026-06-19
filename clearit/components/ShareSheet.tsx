@@ -65,11 +65,11 @@ export function ShareSheet({ analysis, onClose }: ShareSheetProps) {
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 28, stiffness: 300 }}
-          className="w-full max-w-md flex flex-col"
+          className="w-full max-w-md flex flex-col overflow-hidden"
           style={{
             background: "var(--bg)",
             borderRadius: "24px 24px 0 0",
-            maxHeight: "88dvh",
+            height: "88dvh",
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -97,8 +97,8 @@ export function ShareSheet({ analysis, onClose }: ShareSheetProps) {
             </button>
           </div>
 
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4"
+          {/* Scrollable content — min-h-0 required for flex overflow-y-auto to work */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 flex flex-col gap-4"
             style={{ scrollbarWidth: "none" }}>
 
             {/* Hero */}

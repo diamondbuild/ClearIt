@@ -55,8 +55,10 @@ export async function saveAnalysisToSupabase(
   const sb = getSupabaseClient();
   if (!sb) return false;
   try {
+    const { data: { user } } = await sb.auth.getUser();
     const { error } = await sb.from(TABLE).upsert({
       id:             analysis.id,
+      user_id:        user?.id ?? null,
       created_at:     analysis.createdAt,
       category:       analysis.category,
       urgency:        analysis.urgency,
@@ -80,9 +82,14 @@ export async function fetchHistoryFromSupabase(limit = 50): Promise<HistoryItem[
   const sb = getSupabaseClient();
   if (!sb) return [];
   try {
+    // Only signed-in users have cloud history; signed-out users use localStorage.
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return [];
+
     const { data, error } = await sb
       .from(TABLE)
       .select("id, created_at, category, urgency, plain_title, text_snippet, used_image, thumbnail_urls, result")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(limit);
 

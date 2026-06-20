@@ -1,9 +1,13 @@
 -- ClearIt Supabase Schema
 -- Run this in your Supabase project: Dashboard → SQL Editor → New query → paste + run
 
+-- NOTE: If you already created this table with the old "public" policies,
+-- run supabase/auth_migration.sql instead (it upgrades an existing project).
+
 -- ── Analyses table ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS analyses (
   id             TEXT        PRIMARY KEY,
+  user_id        UUID        REFERENCES auth.users (id) ON DELETE CASCADE,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   category       TEXT        NOT NULL,
   urgency        TEXT        NOT NULL,
@@ -14,16 +18,48 @@ CREATE TABLE IF NOT EXISTS analyses (
   thumbnail_urls TEXT[]      NOT NULL DEFAULT '{}'
 );
 
--- Index for fast history queries
+-- Indexes for fast history queries
 CREATE INDEX IF NOT EXISTS analyses_created_at_idx ON analyses (created_at DESC);
+CREATE INDEX IF NOT EXISTS analyses_user_id_idx    ON analyses (user_id);
 
--- ── Row Level Security ────────────────────────────────────────────────────────
+-- ── Row Level Security (per-user) ──────────────────────────────────────────────
 ALTER TABLE analyses ENABLE ROW LEVEL SECURITY;
 
--- Anyone can read and insert (no auth for MVP)
-CREATE POLICY "Public read"   ON analyses FOR SELECT USING (true);
-CREATE POLICY "Public insert" ON analyses FOR INSERT WITH CHECK (true);
-CREATE POLICY "Public delete" ON analyses FOR DELETE USING (true);
+CREATE POLICY "Owner can read"   ON analyses FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Owner can insert" ON analyses FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Owner can update" ON analyses FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Owner can delete" ON analyses FOR DELETE USING (auth.uid() = user_id);
+
+-- ── Profiles table (plan / billing state, used by the Stripe step) ──────────────
+CREATE TABLE IF NOT EXISTS profiles (
+  id                 UUID PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
+  email              TEXT,
+  full_name          TEXT,
+  is_pro             BOOLEAN     NOT NULL DEFAULT FALSE,
+  plan               TEXT        NOT NULL DEFAULT 'free',
+  stripe_customer_id TEXT,
+  current_period_end TIMESTAMPTZ,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Profile owner can read"   ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Profile owner can update" ON profiles FOR UPDATE USING (auth.uid() = id);
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name)
+  VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data ->> 'full_name')
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ── Storage bucket ────────────────────────────────────────────────────────────
 -- Create this in Supabase Dashboard → Storage → New bucket

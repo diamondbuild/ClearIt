@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/components/AuthProvider";
 
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
@@ -62,7 +63,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           } catch(e) {}
         `}} />
       </head>
-      <body className="h-full antialiased">{children}</body>
+      <body className="h-full antialiased">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

@@ -1,10 +1,80 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronRight, Focus } from "lucide-react";
+import { ChevronRight, Focus, LogOut, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { clearHistory, getHistory } from "@/lib/storage/history";
 import { useDarkMode } from "@/lib/theme";
+import { useAuth } from "@/components/AuthProvider";
+
+function GoogleMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.71-1.57 2.68-3.89 2.68-6.62z"/>
+      <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.85.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/>
+      <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/>
+      <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/>
+    </svg>
+  );
+}
+
+function AccountSection() {
+  const { user, loading, authEnabled, signInWithGoogle, signOut } = useAuth();
+  const [busy, setBusy] = useState(false);
+
+  if (!authEnabled) return null;
+
+  const handleSignIn = async () => {
+    setBusy(true);
+    try { await signInWithGoogle(); } finally { setBusy(false); }
+  };
+
+  return (
+    <div>
+      <p className="text-xs font-bold uppercase tracking-widest mb-2 px-0.5"
+        style={{ color: "var(--muted)", letterSpacing: "0.1em" }}>
+        Account
+      </p>
+      <div className="rounded-2xl border overflow-hidden px-4"
+        style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+        {loading ? (
+          <div className="py-4 flex items-center gap-2" style={{ color: "var(--muted)" }}>
+            <Loader2 size={16} className="animate-spin" />
+            <span className="text-sm">Checking sign-in…</span>
+          </div>
+        ) : user ? (
+          <div className="py-3.5 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold truncate" style={{ color: "var(--ink)" }}>
+                {(user.user_metadata?.full_name as string) || "Signed in"}
+              </p>
+              <p className="text-xs truncate" style={{ color: "var(--muted)" }}>
+                {user.email}
+              </p>
+            </div>
+            <button onClick={() => signOut()}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold flex-shrink-0 border"
+              style={{ background: "var(--surface-2)", borderColor: "var(--border)", color: "var(--ink)" }}>
+              <LogOut size={15} /> Sign out
+            </button>
+          </div>
+        ) : (
+          <div className="py-3.5">
+            <button onClick={handleSignIn} disabled={busy}
+              className="w-full flex items-center justify-center gap-2.5 py-3 rounded-2xl text-sm font-semibold border transition-all active:scale-[0.98] disabled:opacity-60"
+              style={{ background: "var(--bg)", borderColor: "var(--border)", color: "var(--ink)" }}>
+              {busy ? <Loader2 size={16} className="animate-spin" /> : <GoogleMark />}
+              Continue with Google
+            </button>
+            <p className="text-xs mt-2 text-center" style={{ color: "var(--muted)" }}>
+              Sign in to sync your history across devices.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
@@ -64,6 +134,9 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex flex-col gap-5">
+          {/* Account */}
+          <AccountSection />
+
           {/* Appearance */}
           <Section label="Appearance">
             <SettingRow label="Dark mode"
